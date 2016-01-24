@@ -16,7 +16,8 @@
 
 package com.github.dnvriend
 
-import java.util.UUID
+import java.text.SimpleDateFormat
+import java.util.{ Date, UUID }
 
 import akka.actor._
 import akka.event.LoggingReceive
@@ -81,64 +82,6 @@ class Person(override val persistenceId: String) extends PersistentActor {
   }
 }
 
-trait ReadJournal {
-  _: Actor ⇒
-  implicit val ec: ExecutionContext = context.system.dispatcher
-  implicit val mat: Materializer = ActorMaterializer()
-  val readJournal: JdbcReadJournal = PersistenceQuery(context.system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
-}
-
-object PersonIdRegistry {
-  case class NewPersistenceId(id: String)
-}
-
-class PersonIdRegistry extends Actor with ActorLogging with ReadJournal {
-  import PersonIdRegistry._
-  var allPersonIds: Set[String] = Set.empty[String]
-
-  def receiveNewPersistenceId(id: String): Unit =
-    self ! NewPersistenceId(id)
-
-  readJournal.allPersistenceIds().runForeach(receiveNewPersistenceId)
-
-  override def receive: Receive = {
-    case NewPersistenceId(id) ⇒
-      allPersonIds += id
-      log.debug("New persistenceId added: {}, size: {}", id, allPersonIds.size)
-  }
-}
-
-object PersonRegistry {
-  case class NewPersistenceId(id: String)
-}
-
-class PersonRegistry extends Actor with ActorLogging with ReadJournal {
-  import PersonRegistry._
-  var allPersons: Map[String, PersonState] = Map.empty
-
-  readJournal.allPersistenceIds().runForeach(receiveNewPersistenceId)
-
-  def receiveNewPersistenceId(id: String): Unit =
-    self ! NewPersistenceId(id)
-
-  def handleEvent(event: EventEnvelope): Unit =
-    self ! event
-
-  override def receive: Actor.Receive = {
-    case NewPersistenceId(id) ⇒
-      readJournal.eventsByPersistenceId(id, 0, Long.MaxValue).runForeach(handleEvent)
-
-    case EventEnvelope(_, id, _, event: PersonCreated) if allPersons.isDefinedAt(id) ⇒
-      val person = allPersons(id)
-      allPersons += (id -> person.copy(firstName = event.firstName, lastName = event.lastName))
-      log.debug("Persons: {}", allPersons.size)
-
-    case EventEnvelope(_, id, _, event: PersonCreated) ⇒
-      allPersons += (id -> PersonState(event.firstName, event.lastName))
-      log.debug("Persons: {}", allPersons.size)
-  }
-}
-
 class PersonRepository()(implicit val system: ActorSystem) {
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
@@ -156,9 +99,10 @@ class PersonRepository()(implicit val system: ActorSystem) {
   def ids: Future[Set[String]] = readJournal.currentPersistenceIds().filter(_.startsWith("person#")).runFold(List.empty[String])(_ :+ _).map(_.toSet)
 }
 
-class SupportDesk extends Actor with ActorLogging with ReadJournal {
+class SupportDesk extends Actor with ActorLogging {
   var counter: Long = 0
   val repository = new PersonRepository()(context.system)
+  implicit val ec: ExecutionContext = context.system.dispatcher
 
   context.system.scheduler.schedule(1.second, 1.second, self, "GO")
 
@@ -185,7 +129,46 @@ class SupportDesk extends Actor with ActorLogging with ReadJournal {
 
 object Launch extends App {
   implicit val system: ActorSystem = ActorSystem()
+  implicit val ec: ExecutionContext = system.dispatcher
+  implicit val mat: Materializer = ActorMaterializer()
   val supportDesk = system.actorOf(Props(new SupportDesk))
-  val personIdRegistry = system.actorOf(Props(new PersonIdRegistry))
-  val personRegistry = system.actorOf(Props(new PersonRegistry))
+
+  //
+  // the read models
+  //
+  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+
+  // counts unique pids
+  readJournal.allPersistenceIds().runFold(List.empty[String]) {
+    case (listOfPids, pid) ⇒
+      println(s"New persistenceId received: $pid")
+      listOfPids :+ pid
+  }
+
+  def format(timestamp: Long): String =
+    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date(timestamp))
+
+  // counts created persons
+  readJournal.eventsByTag("person-created", 0).runFold(0L) {
+    case (num, EventEnvelope(_, pid, seqno, PersonCreated(firstName, lastName, timestamp))) ⇒
+      val total = num + 1
+      println(s"Person created $firstName, $lastName on ${format(timestamp)} got id: $pid, total persons: $total")
+      total
+  }
+
+  // count first name changed
+  readJournal.eventsByTag("first-name-changed", 0).runFold(0L) {
+    case (num, EventEnvelope(_, pid, seqno, FirstNameChanged(oldName, newName, timestamp))) ⇒
+      val total = num + 1
+      println(s"First name changed of pid: $pid from $oldName to $newName on ${format(timestamp)}, total changed: $total")
+      total
+  }
+
+  // counts last name changed
+  readJournal.eventsByTag("last-name-changed", 0).runFold(0L) {
+    case (num, EventEnvelope(_, pid, seqno, LastNameChanged(oldName, newName, timestamp))) ⇒
+      val total = num + 1
+      println(s"Last name changed of pid: $pid from $oldName to $newName on ${format(timestamp)}, total changed: $total")
+      total
+  }
 }
