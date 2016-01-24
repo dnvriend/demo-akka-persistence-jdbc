@@ -29,6 +29,7 @@ import com.github.dnvriend.Person._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.Random
 
 object Person {
 
@@ -82,11 +83,7 @@ class Person(override val persistenceId: String) extends PersistentActor {
   }
 }
 
-class PersonRepository()(implicit val system: ActorSystem) {
-  implicit val ec: ExecutionContext = system.dispatcher
-  implicit val mat: Materializer = ActorMaterializer()
-  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
-
+class PersonRepository(readJournal: JdbcReadJournal)(implicit val system: ActorSystem, val mat: Materializer, val ec: ExecutionContext) {
   def create(firstName: String, lastName: String): ActorRef = {
     val id = UUID.randomUUID().toString
     val person = find(id)
@@ -96,34 +93,38 @@ class PersonRepository()(implicit val system: ActorSystem) {
 
   def find(id: String): ActorRef = system.actorOf(Props(new Person("person#" + id)), id)
 
-  def ids: Future[Set[String]] = readJournal.currentPersistenceIds().filter(_.startsWith("person#")).runFold(List.empty[String])(_ :+ _).map(_.toSet)
+  def countPersons: Future[Long] = readJournal.currentEventsByTag("person-created", 0).runFold(0L) { case (c, _) ⇒ c + 1 }
 }
 
-class SupportDesk extends Actor with ActorLogging {
+class SupportDesk(repository: PersonRepository, readJournal: JdbcReadJournal)(implicit val mat: Materializer, ec: ExecutionContext) extends Actor with ActorLogging {
   var counter: Long = 0
-  val repository = new PersonRepository()(context.system)
-  implicit val ec: ExecutionContext = context.system.dispatcher
 
   context.system.scheduler.schedule(1.second, 1.second, self, "GO")
 
   override def receive: Receive = {
     case _ if counter % 2 == 0 ⇒
-      repository.create("random", "random") ! ChangeFirstName("FOO")
       counter += 1
+      val rnd = Random.nextInt(2048)
+      repository.create("random" + rnd, "random" + rnd) ! ChangeFirstName("FOO" + rnd)
 
     case _ if counter % 3 == 0 ⇒
-      repository.create("foo", "bar") ! ChangeLastName("BARR")
       counter += 1
+      val rnd = Random.nextInt(2048)
+      repository.create("foo" + rnd, "bar" + rnd) ! ChangeLastName("BARR" + rnd)
+      for {
+        count ← repository.countPersons
+        num = if (count > Int.MaxValue) Int.MaxValue else count.toInt
+        pid ← readJournal.currentPersistenceIds()
+          .filter(_.startsWith("person#"))
+          .drop(Random.nextInt(num))
+          .take(1)
+          .runFold("")(_ + _)
+        id ← pid.split("person#").drop(1)
+      } repository.find(id) ! ChangeLastName("FROM_FOUND")
 
-    case _ if counter % 4 == 0 ⇒
-      repository.ids.map { ids ⇒
-        ids.headOption.foreach { id ⇒
-          repository.find(id) ! ChangeLastName("FROM_FOUND")
-        }
-      }
+    case _ ⇒
       counter += 1
-
-    case _ ⇒ counter += 1
+      println("Nothing to do: " + counter)
   }
 }
 
@@ -131,12 +132,13 @@ object Launch extends App {
   implicit val system: ActorSystem = ActorSystem()
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
-  val supportDesk = system.actorOf(Props(new SupportDesk))
+  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  val repository = new PersonRepository(readJournal)
+  val supportDesk = system.actorOf(Props(new SupportDesk(repository, readJournal)))
 
   //
   // the read models
   //
-  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
 
   // counts unique pids
   readJournal.allPersistenceIds().runFold(List.empty[String]) {
@@ -146,7 +148,7 @@ object Launch extends App {
   }
 
   def format(timestamp: Long): String =
-    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date(timestamp))
+    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.XXX").format(new Date(timestamp))
 
   // counts created persons
   readJournal.eventsByTag("person-created", 0).runFold(0L) {
