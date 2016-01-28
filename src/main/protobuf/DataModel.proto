@@ -1,0 +1,16 @@
+syntax = "proto3";
+option java_package = "com.github.dnvriend.data";
+option optimize_for = SPEED;
+
+message NameRegistered {
+    string name = 1;
+    string surname = 2;
+}
+
+message NameChanged {
+    string name = 1;
+}
+
+message SurnameChanged {
+    string surname = 1;
+}

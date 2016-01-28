@@ -25,33 +25,11 @@ import akka.persistence.PersistentActor
 import akka.persistence.jdbc.query.journal.JdbcReadJournal
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.stream.{ ActorMaterializer, Materializer }
-import com.github.dnvriend.Person._
+import com.github.dnvriend.domain.Person._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
-
-object Person {
-
-  sealed trait Command
-
-  final case class CreatePerson(firstName: String, lastName: String) extends Command
-
-  final case class ChangeFirstName(firstName: String) extends Command
-
-  final case class ChangeLastName(lastName: String) extends Command
-
-  sealed trait Event
-
-  final case class PersonCreated(firstName: String, lastName: String, timestamp: Long) extends Event
-
-  final case class FirstNameChanged(oldValue: String, newValue: String, timestamp: Long) extends Event
-
-  final case class LastNameChanged(oldValue: String, newValue: String, timestamp: Long) extends Event
-
-  case class PersonState(firstName: String = "", lastName: String = "")
-
-}
 
 class Person(override val persistenceId: String) extends PersistentActor {
   var state = PersonState()

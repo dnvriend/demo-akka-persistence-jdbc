@@ -32,7 +32,7 @@ libraryDependencies ++= {
     "ch.qos.logback" % "logback-classic" % "1.1.2",
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.0",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.2",
     "org.postgresql" % "postgresql" % "9.4-1206-jdbc42",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
     "org.scalatest" %% "scalatest" % "2.2.4" % Test
@@ -68,9 +68,21 @@ headers := Map(
 
 enablePlugins(AutomateHeaderPlugin)
 
+// enable shooting the jvm in the head //
 import spray.revolver.RevolverPlugin.Revolver
 Revolver.settings
 
 Revolver.enableDebugging(port = 5050, suspend = false)
 
 mainClass in Revolver.reStart := Some("com.github.dnvriend.Launch")
+
+// enable protobuf plugin //
+// see: https://trueaccord.github.io/ScalaPB/sbt-settings.html
+import com.trueaccord.scalapb.{ScalaPbPlugin => PB}
+
+PB.protobufSettings
+
+// protoc-jar which is on the sbt classpath //
+// see: https://github.com/os72/protoc-jar
+PB.runProtoc in PB.protobufConfig := (args =>
+  com.github.os72.protocjar.Protoc.runProtoc("-v300" +: args.toArray))

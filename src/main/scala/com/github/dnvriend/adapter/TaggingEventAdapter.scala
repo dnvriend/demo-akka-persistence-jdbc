@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend
+package com.github.dnvriend.adapter
 
 import akka.persistence.journal.{ Tagged, WriteEventAdapter }
-import com.github.dnvriend.Person.{ LastNameChanged, FirstNameChanged, PersonCreated }
+import com.github.dnvriend.domain.Person._
 
 class TaggingEventAdapter extends WriteEventAdapter {
   override def manifest(event: Any): String = ""
