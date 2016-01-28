@@ -7,8 +7,8 @@ It shows the following:
   - The postgres database schema to use,
   - How to persist events to the journal,
   - How to create, configure and use Google Protocol Buffers for your data model,
-  - How to create, configure and use Custom Serializers to convert your domain model to your data model and vice-versa,
-  - How to create, configure and an EventAdapter, to tag events,
+  - How to create, configure and an EventAdapter, to tag events, and convert your domain model to your data model (protobuf),
+  - How to create, configure and use Custom Serializers to convert your data model (protobuf) to byte arrays and vice-versa,
   - How to query for events using the akka-persistence-query interface,
   - How to query tagged events using the akka-persistence-query interface,
   - In short, how easy it is to create an event sourced application.
