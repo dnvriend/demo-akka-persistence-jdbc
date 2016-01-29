@@ -16,24 +16,19 @@
 
 package com.github.dnvriend.domain
 
-object Person {
+sealed trait Command
 
-  sealed trait Command
+final case class CreatePerson(firstName: String, lastName: String, timestamp: Long) extends Command
 
-  final case class CreatePerson(firstName: String, lastName: String) extends Command
+final case class ChangeFirstName(firstName: String, timestamp: Long) extends Command
 
-  final case class ChangeFirstName(firstName: String) extends Command
+final case class ChangeLastName(lastName: String, timestamp: Long) extends Command
 
-  final case class ChangeLastName(lastName: String) extends Command
+sealed trait Event
 
-  sealed trait Event
+final case class PersonCreated(firstName: String, lastName: String, timestamp: Long) extends Event
 
-  final case class PersonCreated(firstName: String, lastName: String, timestamp: Long) extends Event
+final case class FirstNameChanged(firstName: String, timestamp: Long) extends Event
 
-  final case class FirstNameChanged(oldValue: String, newValue: String, timestamp: Long) extends Event
+final case class LastNameChanged(lastName: String, timestamp: Long) extends Event
 
-  final case class LastNameChanged(oldValue: String, newValue: String, timestamp: Long) extends Event
-
-  case class PersonState(firstName: String = "", lastName: String = "")
-
-}

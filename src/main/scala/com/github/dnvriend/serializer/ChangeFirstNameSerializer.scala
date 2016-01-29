@@ -17,29 +17,34 @@
 package com.github.dnvriend.serializer
 
 import akka.serialization.SerializerWithStringManifest
-import com.github.dnvriend.data.DataModel.NameRegistered
+import com.github.dnvriend.data.Command.PBChangeFirstName
+import com.github.dnvriend.domain.ChangeFirstName
 
 /**
- * The PersonCreated serializer does the following:
- * <ul>
- * <li>Uses the case class as identifier for the manifest</li>
- * <li>It will receive a case class in the `toBinary` method, and maps it to a protobuf type that will be mapped to a byte array</li>
- * <li>The format stored in the journal is a protobuf byte array, it must be mapped to a protobuf type and then to a case class</li>
- * </ul>
+ * Converts FirstName Google Protobuf Message
+ * to byte array and back
  */
-class NameRegisteredSerializer extends SerializerWithStringManifest {
+class ChangeFirstNameSerializer extends SerializerWithStringManifest {
 
   override def identifier: Int = 100
 
-  final val Manifest = classOf[NameRegistered].getName
+  final val Manifest = classOf[ChangeFirstName].getName
 
   override def manifest(o: AnyRef): String = o.getClass.getName
 
+  /**
+   * Unmarshal to the data model
+   */
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
-    if (Manifest == manifest) NameRegistered.parseFrom(bytes)
-    else throw new IllegalArgumentException("Unable to handle manifest: " + manifest)
+    if (Manifest == manifest) {
+      val PBChangeFirstName(firstName, timestamp) = PBChangeFirstName.parseFrom(bytes)
+      ChangeFirstName(firstName, timestamp)
+    } else throw new IllegalArgumentException("Unable to handle manifest: " + manifest)
 
+  /**
+   * Marshal the data model to bytes
+   */
   override def toBinary(o: AnyRef): Array[Byte] = o match {
-    case NameRegistered(name, surname) ⇒ NameRegistered(name, surname).toByteArray
+    case ChangeFirstName(firstName, timestamp) ⇒ PBChangeFirstName(firstName, timestamp).toByteArray
   }
 }

@@ -32,7 +32,7 @@ libraryDependencies ++= {
     "ch.qos.logback" % "logback-classic" % "1.1.2",
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.2",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.3",
     "org.postgresql" % "postgresql" % "9.4-1206-jdbc42",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
     "org.scalatest" %% "scalatest" % "2.2.4" % Test

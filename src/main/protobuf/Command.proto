@@ -1,0 +1,22 @@
+syntax = "proto3";
+option java_package = "com.github.dnvriend.data";
+option optimize_for = SPEED;
+
+// see: https://developers.google.com/protocol-buffers/docs/proto3
+
+// commands
+message PBCreatePerson {
+    string firstname = 1;
+    string lastname = 2;
+    int64 timestamp = 3;
+}
+
+message PBChangeFirstName {
+    string firstName = 1;
+    int64 timestamp = 3;
+}
+
+message PBChangeLastName {
+    string lastName = 1;
+    int64 timestamp = 3;
+}

@@ -17,21 +17,25 @@
 package com.github.dnvriend.serializer
 
 import akka.serialization.SerializerWithStringManifest
-import com.github.dnvriend.data.DataModel.SurnameChanged
+import com.github.dnvriend.data.Event.PBFirstNameChanged
 
-class SurnameChangedSerializer extends SerializerWithStringManifest {
+/**
+ * Converts LastNameChanged Google Protobuf Message
+ * to byte array and back.
+ */
+class LastNameChangedSerializer extends SerializerWithStringManifest {
 
-  override def identifier: Int = 102
+  override def identifier: Int = 104
 
-  final val Manifest = classOf[SurnameChanged].getName
+  final val Manifest = classOf[PBFirstNameChanged].getName
 
   override def manifest(o: AnyRef): String = o.getClass.getName
 
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
-    if (Manifest == manifest) SurnameChanged.parseFrom(bytes)
+    if (Manifest == manifest) PBFirstNameChanged.parseFrom(bytes)
     else throw new IllegalArgumentException("Unable to handle manifest: " + manifest)
 
   override def toBinary(o: AnyRef): Array[Byte] = o match {
-    case SurnameChanged(surname) ⇒ SurnameChanged(surname).toByteArray
+    case e: PBFirstNameChanged ⇒ e.toByteArray
   }
 }

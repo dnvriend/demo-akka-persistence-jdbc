@@ -22,14 +22,20 @@ import java.util.{ Date, UUID }
 import akka.actor._
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
-import akka.persistence.jdbc.query.journal.JdbcReadJournal
+import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.stream.{ ActorMaterializer, Materializer }
-import com.github.dnvriend.domain.Person._
+import com.github.dnvriend.Person.PersonState
+import com.github.dnvriend.data.Event.{ PBLastNameChanged, PBFirstNameChanged, PBPersonCreated }
+import com.github.dnvriend.domain._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
+
+object Person {
+  case class PersonState(firstName: String = "", lastName: String = "")
+}
 
 class Person(override val persistenceId: String) extends PersistentActor {
   var state = PersonState()
@@ -38,23 +44,25 @@ class Person(override val persistenceId: String) extends PersistentActor {
 
   def handleEvent(event: Event): Unit = event match {
     case PersonCreated(firstName, lastName, _) ⇒ state = state.copy(firstName = firstName, lastName = lastName)
-    case FirstNameChanged(_, newValue, _)      ⇒ state = state.copy(firstName = newValue)
-    case LastNameChanged(_, newValue, _)       ⇒ state = state.copy(lastName = newValue)
+    case FirstNameChanged(firstName, _)        ⇒ state = state.copy(firstName = firstName)
+    case LastNameChanged(lastName, _)          ⇒ state = state.copy(lastName = lastName)
   }
 
   override def receiveRecover: Receive = LoggingReceive {
     case event: Event ⇒ handleEvent(event)
   }
 
+  def now: Long = System.currentTimeMillis()
+
   override def receiveCommand: Receive = LoggingReceive {
-    case CreatePerson(firstName, lastName) ⇒
-      persist(PersonCreated(firstName, lastName, System.currentTimeMillis()))(handleEvent)
+    case CreatePerson(firstName, lastName, _) ⇒
+      persist(PersonCreated(firstName, lastName, now))(handleEvent)
 
-    case ChangeFirstName(newValue) ⇒
-      persist(FirstNameChanged(state.firstName, newValue, System.currentTimeMillis()))(handleEvent)
+    case ChangeFirstName(firstName, _) ⇒
+      persist(FirstNameChanged(firstName, now))(handleEvent)
 
-    case ChangeLastName(newValue) ⇒
-      persist(LastNameChanged(state.lastName, newValue, System.currentTimeMillis()))(handleEvent)
+    case ChangeLastName(lastName, _) ⇒
+      persist(LastNameChanged(lastName, now))(handleEvent)
 
     case ReceiveTimeout ⇒
       context.stop(self)
@@ -62,10 +70,12 @@ class Person(override val persistenceId: String) extends PersistentActor {
 }
 
 class PersonRepository(readJournal: JdbcReadJournal)(implicit val system: ActorSystem, val mat: Materializer, val ec: ExecutionContext) {
+  def now: Long = System.currentTimeMillis()
+
   def create(firstName: String, lastName: String): ActorRef = {
     val id = UUID.randomUUID().toString
     val person = find(id)
-    person ! CreatePerson(firstName, lastName)
+    person ! CreatePerson(firstName, lastName, now)
     person
   }
 
@@ -79,16 +89,18 @@ class SupportDesk(repository: PersonRepository, readJournal: JdbcReadJournal)(im
 
   context.system.scheduler.schedule(1.second, 1.second, self, "GO")
 
+  def now: Long = System.currentTimeMillis()
+
   override def receive: Receive = {
     case _ if counter % 2 == 0 ⇒
       counter += 1
       val rnd = Random.nextInt(2048)
-      repository.create("random" + rnd, "random" + rnd) ! ChangeFirstName("FOO" + rnd)
+      repository.create("random" + rnd, "random" + rnd) ! ChangeFirstName("FOO" + rnd, now)
 
     case _ if counter % 3 == 0 ⇒
       counter += 1
       val rnd = Random.nextInt(2048)
-      repository.create("foo" + rnd, "bar" + rnd) ! ChangeLastName("BARR" + rnd)
+      repository.create("foo" + rnd, "bar" + rnd) ! ChangeLastName("BARR" + rnd, now)
       for {
         count ← repository.countPersons
         num = if (count > Int.MaxValue) Int.MaxValue else count.toInt
@@ -98,7 +110,7 @@ class SupportDesk(repository: PersonRepository, readJournal: JdbcReadJournal)(im
           .take(1)
           .runFold("")(_ + _)
         id ← pid.split("person#").drop(1)
-      } repository.find(id) ! ChangeLastName("FROM_FOUND")
+      } repository.find(id) ! ChangeLastName("FROM_FOUND", now)
 
     case _ ⇒
       counter += 1
@@ -130,7 +142,7 @@ object Launch extends App {
 
   // counts created persons
   readJournal.eventsByTag("person-created", 0).runFold(0L) {
-    case (num, EventEnvelope(_, pid, seqno, PersonCreated(firstName, lastName, timestamp))) ⇒
+    case (num, EventEnvelope(_, pid, seqno, PBPersonCreated(firstName, lastName, timestamp))) ⇒
       val total = num + 1
       println(s"Person created $firstName, $lastName on ${format(timestamp)} got id: $pid, total persons: $total")
       total
@@ -138,17 +150,17 @@ object Launch extends App {
 
   // count first name changed
   readJournal.eventsByTag("first-name-changed", 0).runFold(0L) {
-    case (num, EventEnvelope(_, pid, seqno, FirstNameChanged(oldName, newName, timestamp))) ⇒
+    case (num, EventEnvelope(_, pid, seqno, PBFirstNameChanged(newName, timestamp))) ⇒
       val total = num + 1
-      println(s"First name changed of pid: $pid from $oldName to $newName on ${format(timestamp)}, total changed: $total")
+      println(s"First name changed of pid: $pid to $newName on ${format(timestamp)}, total changed: $total")
       total
   }
 
   // counts last name changed
   readJournal.eventsByTag("last-name-changed", 0).runFold(0L) {
-    case (num, EventEnvelope(_, pid, seqno, LastNameChanged(oldName, newName, timestamp))) ⇒
+    case (num, EventEnvelope(_, pid, seqno, PBLastNameChanged(newName, timestamp))) ⇒
       val total = num + 1
-      println(s"Last name changed of pid: $pid from $oldName to $newName on ${format(timestamp)}, total changed: $total")
+      println(s"Last name changed of pid: $pid to $newName on ${format(timestamp)}, total changed: $total")
       total
   }
 }

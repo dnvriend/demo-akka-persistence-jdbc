@@ -16,21 +16,29 @@
 
 package com.github.dnvriend.adapter
 
-import akka.persistence.journal.{ Tagged, WriteEventAdapter }
-import com.github.dnvriend.domain.Person._
+import akka.persistence.journal.{ EventAdapter, EventSeq, Tagged }
+import com.github.dnvriend.data.Event._
+import com.github.dnvriend.domain.{ FirstNameChanged, LastNameChanged, PersonCreated }
 
-class TaggingEventAdapter extends WriteEventAdapter {
+class TaggingEventAdapter extends EventAdapter {
   override def manifest(event: Any): String = ""
 
-  def withTag(event: Any, tag: String) = Tagged(event, Set(tag))
+  def tag(event: Any, tag: String) = Tagged(event, Set(tag))
 
   override def toJournal(event: Any): Any = event match {
-    case _: PersonCreated ⇒
-      withTag(event, "person-created")
-    case _: FirstNameChanged ⇒
-      withTag(event, "first-name-changed")
-    case _: LastNameChanged ⇒
-      withTag(event, "last-name-changed")
-    case _ ⇒ event
+    case PersonCreated(firstName, lastName, timestamp) ⇒ tag(PBPersonCreated(firstName, lastName, timestamp), "person-created")
+    case FirstNameChanged(firstName, timestamp)        ⇒ tag(PBFirstNameChanged(firstName, timestamp), "first-name-changed")
+    case LastNameChanged(lastName, timestamp)          ⇒ tag(PBLastNameChanged(lastName, timestamp), "last-name-changed")
+    case _                                             ⇒ event
+  }
+
+  /**
+   * Protobuf messages must be converted back to the domain model
+   */
+  override def fromJournal(event: Any, manifest: String): EventSeq = event match {
+    case PBPersonCreated(firstName, lastName, timestamp) ⇒ EventSeq.single(PersonCreated(firstName, lastName, timestamp))
+    case PBFirstNameChanged(firstName, timestamp)        ⇒ EventSeq.single(FirstNameChanged(firstName, timestamp))
+    case PBLastNameChanged(lastName, timestamp)          ⇒ EventSeq.single(LastNameChanged(lastName, timestamp))
+    case _                                               ⇒ EventSeq.single(event)
   }
 }
