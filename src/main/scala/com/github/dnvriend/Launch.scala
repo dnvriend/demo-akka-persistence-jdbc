@@ -22,11 +22,13 @@ import java.util.{ Date, UUID }
 import akka.actor._
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
+import akka.persistence.inmemory.query.journal.scaladsl.InMemoryReadJournal
 import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
+import akka.persistence.query.scaladsl._
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.stream.{ ActorMaterializer, Materializer }
 import com.github.dnvriend.Person.PersonState
-import com.github.dnvriend.data.Event.{ PBLastNameChanged, PBFirstNameChanged, PBPersonCreated }
+import com.github.dnvriend.data.Event.{ PBFirstNameChanged, PBLastNameChanged, PBPersonCreated }
 import com.github.dnvriend.domain._
 
 import scala.concurrent.duration._
@@ -69,7 +71,7 @@ class Person(override val persistenceId: String) extends PersistentActor {
   }
 }
 
-class PersonRepository(readJournal: JdbcReadJournal)(implicit val system: ActorSystem, val mat: Materializer, val ec: ExecutionContext) {
+class PersonRepository(readJournal: ReadJournal with CurrentEventsByTagQuery)(implicit val system: ActorSystem, val mat: Materializer, val ec: ExecutionContext) {
   def now: Long = System.currentTimeMillis()
 
   def create(firstName: String, lastName: String): ActorRef = {
@@ -84,7 +86,7 @@ class PersonRepository(readJournal: JdbcReadJournal)(implicit val system: ActorS
   def countPersons: Future[Long] = readJournal.currentEventsByTag("person-created", 0).runFold(0L) { case (c, _) ⇒ c + 1 }
 }
 
-class SupportDesk(repository: PersonRepository, readJournal: JdbcReadJournal)(implicit val mat: Materializer, ec: ExecutionContext) extends Actor with ActorLogging {
+class SupportDesk(repository: PersonRepository, readJournal: ReadJournal with CurrentPersistenceIdsQuery)(implicit val mat: Materializer, ec: ExecutionContext) extends Actor with ActorLogging {
   var counter: Long = 0
 
   context.system.scheduler.schedule(1.second, 1.second, self, "GO")
@@ -95,12 +97,14 @@ class SupportDesk(repository: PersonRepository, readJournal: JdbcReadJournal)(im
     case _ if counter % 2 == 0 ⇒
       counter += 1
       val rnd = Random.nextInt(2048)
-      repository.create("random" + rnd, "random" + rnd) ! ChangeFirstName("FOO" + rnd, now)
+      val actor = repository.create("random" + rnd, "random" + rnd)
+      actor ! ChangeFirstName("FOO" + rnd, now)
+      actor ! ChangeLastName("BARR" + rnd, now)
 
     case _ if counter % 3 == 0 ⇒
       counter += 1
       val rnd = Random.nextInt(2048)
-      repository.create("foo" + rnd, "bar" + rnd) ! ChangeLastName("BARR" + rnd, now)
+      repository.create("foo" + rnd, "bar" + rnd) ! ChangeFirstName("FOO" + rnd, now)
       for {
         count ← repository.countPersons
         num = if (count > Int.MaxValue) Int.MaxValue else count.toInt
@@ -122,7 +126,8 @@ object Launch extends App {
   implicit val system: ActorSystem = ActorSystem()
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
-  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  //  val readJournal: ReadJournal with AllPersistenceIdsQuery with EventsByTagQuery with CurrentPersistenceIdsQuery with CurrentEventsByTagQuery = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  val readJournal: ReadJournal with AllPersistenceIdsQuery with EventsByTagQuery with CurrentPersistenceIdsQuery with CurrentEventsByTagQuery = PersistenceQuery(system).readJournalFor[InMemoryReadJournal](InMemoryReadJournal.Identifier)
   val repository = new PersonRepository(readJournal)
   val supportDesk = system.actorOf(Props(new SupportDesk(repository, readJournal)))
 

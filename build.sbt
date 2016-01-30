@@ -33,6 +33,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
     "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.3",
+    "com.github.dnvriend" %% "akka-persistence-inmemory" % "1.2.2",
     "org.postgresql" % "postgresql" % "9.4-1206-jdbc42",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
     "org.scalatest" %% "scalatest" % "2.2.4" % Test
