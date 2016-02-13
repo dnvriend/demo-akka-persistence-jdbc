@@ -17,6 +17,6 @@ done;
 }
 
 docker rm -f $(docker ps -aq)
-docker-compose --x-networking up -d
+docker-compose up -d
 wait 5432 Postgres
 sbt run

@@ -15,9 +15,6 @@ addSbtPlugin("de.heikoseeberger" % "sbt-header"      % "1.5.0")
 // to shoot akka / the jvm in the head
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.2")
 
-// decode scala errors to human readable form
-addSbtPlugin("com.softwaremill.clippy" % "plugin-sbt" % "0.1")
-
 // enable compiling *.proto files
 // see: http://trueaccord.github.io/ScalaPB/sbt-settings.html
 addSbtPlugin("com.trueaccord.scalapb" % "sbt-scalapb" % "0.5.21")
