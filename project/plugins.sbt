@@ -15,8 +15,13 @@ addSbtPlugin("de.heikoseeberger" % "sbt-header"      % "1.5.0")
 // to shoot akka / the jvm in the head
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.2")
 
+// generates Scala source from your build definitions //
+// see:
+addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.5.0")
+
 // enable compiling *.proto files
 // see: http://trueaccord.github.io/ScalaPB/sbt-settings.html
+// see: https://github.com/trueaccord/sbt-scalapb
 addSbtPlugin("com.trueaccord.scalapb" % "sbt-scalapb" % "0.5.21")
 
 // compiling *.proto files without protoc (for self contained builds)

@@ -21,10 +21,12 @@ version := "1.0.0"
 
 scalaVersion := "2.11.7"
 
+resolvers += "spray repo" at "http://repo.spray.io"
+
 resolvers += "dnvriend at bintray" at "http://dl.bintray.com/dnvriend/maven"
 
 libraryDependencies ++= {
-  val akkaVersion = "2.4.2-RC3"
+  val akkaVersion = "2.4.2"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
@@ -32,8 +34,8 @@ libraryDependencies ++= {
     "ch.qos.logback" % "logback-classic" % "1.1.2",
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.6",
-    "com.github.dnvriend" %% "akka-persistence-inmemory" % "1.2.5",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.7",
+    "com.github.dnvriend" %% "akka-persistence-inmemory" % "1.2.6",
     "org.postgresql" % "postgresql" % "9.4-1206-jdbc42",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
     "org.scalatest" %% "scalatest" % "2.2.4" % Test
@@ -67,10 +69,7 @@ headers := Map(
   "conf" -> Apache2_0("2016", "Dennis Vriend", "#")
 )
 
-enablePlugins(AutomateHeaderPlugin)
-
 // enable shooting the jvm in the head //
-import spray.revolver.RevolverPlugin.Revolver
 Revolver.settings
 
 Revolver.enableDebugging(port = 5050, suspend = false)
@@ -87,3 +86,11 @@ PB.protobufSettings
 // see: https://github.com/os72/protoc-jar
 PB.runProtoc in PB.protobufConfig := (args =>
   com.github.os72.protocjar.Protoc.runProtoc("-v300" +: args.toArray))
+
+// build info configuration //
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+
+buildInfoPackage := "com.github.dnvriend"
+
+// enable plugins
+enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)

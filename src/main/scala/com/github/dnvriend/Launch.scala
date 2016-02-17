@@ -168,4 +168,19 @@ object Launch extends App {
       println(s"Last name changed of pid: $pid to $newName on ${format(timestamp)}, total changed: $total")
       total
   }
+
+  val banner = s"""
+    |
+    |#####  ###### #    #  ####
+    |#    # #      ##  ## #    #
+    |#    # #####  # ## # #    #
+    |#    # #      #    # #    #
+    |#    # #      #    # #    #
+    |#####  ###### #    #  ####
+    |
+    |$BuildInfo
+    |
+  """.stripMargin
+
+  println(banner)
 }
