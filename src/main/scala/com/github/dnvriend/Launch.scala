@@ -22,7 +22,6 @@ import java.util.{ Date, UUID }
 import akka.actor._
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
-import akka.persistence.inmemory.query.journal.scaladsl.InMemoryReadJournal
 import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
 import akka.persistence.query.scaladsl._
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
@@ -126,8 +125,7 @@ object Launch extends App {
   implicit val system: ActorSystem = ActorSystem()
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
-  //  val readJournal: ReadJournal with AllPersistenceIdsQuery with EventsByTagQuery with CurrentPersistenceIdsQuery with CurrentEventsByTagQuery = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
-  val readJournal: ReadJournal with AllPersistenceIdsQuery with EventsByTagQuery with CurrentPersistenceIdsQuery with CurrentEventsByTagQuery = PersistenceQuery(system).readJournalFor[InMemoryReadJournal](InMemoryReadJournal.Identifier)
+  val readJournal: ReadJournal with AllPersistenceIdsQuery with EventsByTagQuery with CurrentPersistenceIdsQuery with CurrentEventsByTagQuery = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
   val repository = new PersonRepository(readJournal)
   val supportDesk = system.actorOf(Props(new SupportDesk(repository, readJournal)))
 
