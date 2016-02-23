@@ -121,11 +121,7 @@ class SupportDesk(repository: PersonRepository, readJournal: ReadJournal with Cu
   }
 }
 
-object Launch extends App {
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val ec: ExecutionContext = system.dispatcher
-  implicit val mat: Materializer = ActorMaterializer()
-  val readJournal: ReadJournal with AllPersistenceIdsQuery with EventsByTagQuery with CurrentPersistenceIdsQuery with CurrentEventsByTagQuery = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+object Launch extends App with Core {
   val repository = new PersonRepository(readJournal)
   val supportDesk = system.actorOf(Props(new SupportDesk(repository, readJournal)))
 
