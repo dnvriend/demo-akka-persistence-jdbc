@@ -69,11 +69,10 @@ class CounterActor extends PersistentActor {
 
 object CounterView {
   case object Get
-  case class Result(xs: List[Incremented])
 }
 
 class CounterView(readJournal: JdbcReadJournal)(implicit ec: ExecutionContext, mat: Materializer) extends Actor {
-  import CounterView._
+  import akka.pattern.pipe
 
   def source: Source[EventEnvelope, NotUsed] = readJournal.currentEventsByPersistenceId("Counter", 0, Long.MaxValue)
 
@@ -81,9 +80,7 @@ class CounterView(readJournal: JdbcReadJournal)(implicit ec: ExecutionContext, m
     case CounterView.Get ⇒
       println("==> Getting the results")
       val sendTo = sender()
-      getAllIncrements.map { xs ⇒
-        sendTo ! Result(xs)
-      }
+      getAllIncrements.pipeTo(sendTo)
   }
 
   def getAllIncrements: Future[List[Incremented]] = {
@@ -114,7 +111,7 @@ class Scheduler(counter: ActorRef, counterView: ActorRef)(implicit ec: Execution
         counter ! CounterActor.Increment(1)
         scheduleCount()
       } else counterView ! CounterView.Get
-    case CounterView.Result(xs) ⇒
+    case xs: List[_] ⇒
       println(s"==> Received events: $xs")
       scheduleCount()
   }
