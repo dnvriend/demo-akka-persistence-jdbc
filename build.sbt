@@ -25,17 +25,19 @@ resolvers += "spray repo" at "http://repo.spray.io"
 
 resolvers += "dnvriend at bintray" at "http://dl.bintray.com/dnvriend/maven"
 
+resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/maven-releases/"
+
 libraryDependencies ++= {
   val akkaVersion = "2.4.2"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
-    "ch.qos.logback" % "logback-classic" % "1.1.2",
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.8",
-    "org.postgresql" % "postgresql" % "9.4-1206-jdbc42",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.9",
+    "ch.qos.logback" % "logback-classic" % "1.1.2",
+    "org.postgresql" % "postgresql" % "9.4.1208.jre7",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
     "org.scalatest" %% "scalatest" % "2.2.4" % Test
   )
