@@ -46,5 +46,6 @@ class ChangeLastNameSerializer extends SerializerWithStringManifest {
    */
   override def toBinary(o: AnyRef): Array[Byte] = o match {
     case ChangeLastName(lastName, timestamp) ⇒ PBChangeLastName(lastName, timestamp).toByteArray
+    case _                                   ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
   }
 }

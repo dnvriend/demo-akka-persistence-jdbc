@@ -24,9 +24,10 @@
         </encoder>
     </appender>
 
-    <logger name="org.github.dnvriend" level="info"/>
+    <logger name="org.github.dnvriend" level="debug"/>
+    <logger name="akka.persistence.jdbc" level="debug"/>
     <logger name="akka" level="debug"/>
-    <!--<logger name="slick.backend.DatabaseComponent.action" level="debug" />-->
+    <logger name="slick.backend.DatabaseComponent.action" level="debug" />
 
     <root level="info">
         <appender-ref ref="console"/>

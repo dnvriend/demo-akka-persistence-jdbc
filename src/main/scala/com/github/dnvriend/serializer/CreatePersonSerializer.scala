@@ -46,5 +46,6 @@ class CreatePersonSerializer extends SerializerWithStringManifest {
    */
   override def toBinary(o: AnyRef): Array[Byte] = o match {
     case CreatePerson(firstName, lastName, timestamp) ⇒ PBCreatePerson(firstName, lastName, timestamp).toByteArray
+    case _                                            ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
   }
 }

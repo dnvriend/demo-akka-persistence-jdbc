@@ -43,5 +43,6 @@ class FirstNameChangedSerializer extends SerializerWithStringManifest {
    */
   override def toBinary(o: AnyRef): Array[Byte] = o match {
     case e: PBFirstNameChanged ⇒ e.toByteArray
+    case _                     ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
   }
 }

@@ -17,7 +17,7 @@
 package com.github.dnvriend.serializer
 
 import akka.serialization.SerializerWithStringManifest
-import com.github.dnvriend.data.Event.PBFirstNameChanged
+import com.github.dnvriend.data.Event.{ PBLastNameChanged, PBFirstNameChanged }
 
 /**
  * Converts LastNameChanged Google Protobuf Message
@@ -36,6 +36,7 @@ class LastNameChangedSerializer extends SerializerWithStringManifest {
     else throw new IllegalArgumentException("Unable to handle manifest: " + manifest)
 
   override def toBinary(o: AnyRef): Array[Byte] = o match {
-    case e: PBFirstNameChanged ⇒ e.toByteArray
+    case e: PBLastNameChanged ⇒ e.toByteArray
+    case _                    ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
   }
 }
