@@ -19,7 +19,7 @@ organization := "com.github.dnvriend"
 
 version := "1.0.0"
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 
 resolvers += "spray repo" at "http://repo.spray.io"
 
@@ -35,7 +35,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.10",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.11",
     "ch.qos.logback" % "logback-classic" % "1.1.2",
     "org.postgresql" % "postgresql" % "9.4.1208.jre7",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,

@@ -122,6 +122,8 @@ class SupportDesk(repository: PersonRepository, readJournal: ReadJournal with Cu
 }
 
 object Launch extends App with Core {
+  override def resourceName: String = "application.conf"
+
   val repository = new PersonRepository(readJournal)
   val supportDesk = system.actorOf(Props(new SupportDesk(repository, readJournal)))
 

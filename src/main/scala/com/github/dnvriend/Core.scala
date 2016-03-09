@@ -20,12 +20,14 @@ import akka.actor.ActorSystem
 import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.stream.{ ActorMaterializer, Materializer }
+import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.ExecutionContext
 
 trait Core {
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val ec: ExecutionContext = system.dispatcher
-  implicit val mat: Materializer = ActorMaterializer()
-  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  def resourceName: String
+  implicit def system: ActorSystem = ActorSystem("demo", ConfigFactory.load(resourceName))
+  implicit def ec: ExecutionContext = system.dispatcher
+  implicit def mat: Materializer = ActorMaterializer()
+  def readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
 }

@@ -27,3 +27,20 @@ CREATE TABLE IF NOT EXISTS akka_persistence_jdbc.snapshot (
   snapshot BYTEA NOT NULL,
   PRIMARY KEY(persistence_id, sequence_number)
 );
+
+DROP TABLE IF EXISTS counter_event_log;
+
+CREATE TABLE IF NOT EXISTS counter_event_log (
+  persistence_id VARCHAR(255) NOT NULL,
+  sequence_number BIGINT NOT NULL,
+  created BIGINT NOT NULL,
+  event_type VARCHAR(255) NOT NULL
+);
+
+DROP TABLE IF EXISTS counter_incremented_event;
+
+CREATE TABLE IF NOT EXISTS counter_incremented_event (
+  persistence_id VARCHAR(255) NOT NULL,
+  sequence_number BIGINT NOT NULL,
+  incremented_by INT NOT NULL
+);

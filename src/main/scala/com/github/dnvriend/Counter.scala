@@ -17,7 +17,7 @@
 package com.github.dnvriend
 
 import akka.NotUsed
-import akka.actor.{ Actor, ActorRef, Props }
+import akka.actor.{ ActorSystem, Actor, ActorRef, Props }
 import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
 import akka.persistence.query.scaladsl.ReadJournal
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
@@ -118,6 +118,8 @@ class Scheduler(counter: ActorRef, counterView: ActorRef)(implicit ec: Execution
 }
 
 object Counter extends App with Core {
+  override def resourceName: String = "counter-application.conf"
+
   val counter = system.actorOf(Props(new CounterActor))
   val counterView = system.actorOf(Props(new CounterView(readJournal)))
   val scheduler = system.actorOf(Props(new Scheduler(counter, counterView)))
