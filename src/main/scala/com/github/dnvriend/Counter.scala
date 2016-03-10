@@ -31,12 +31,19 @@ import scala.concurrent.{ ExecutionContext, Future }
 object CounterActor {
   sealed trait Command
   final case class Increment(value: Int) extends Command
+  final case class Decrement(value: Int) extends Command
 
-  sealed trait Event
+  sealed trait Event {
+    def value: Int
+  }
   final case class Incremented(value: Int) extends Event
+  final case class Decremented(value: Int) extends Event
 
-  case class IncrementState(value: Int = 0) {
-    def updated(event: Incremented): IncrementState = copy(event.value + value)
+  case class CounterState(value: Int = 0) {
+    def update(event: Event): CounterState = event match {
+      case _: Incremented ⇒ copy(value + event.value)
+      case _: Decremented ⇒ copy(value - event.value)
+    }
   }
 }
 
@@ -44,24 +51,27 @@ class CounterActor extends PersistentActor {
   import CounterActor._
   override def persistenceId: String = "Counter"
 
-  private var state = IncrementState()
+  private var state = CounterState()
 
-  private def updateState(event: Incremented): Unit = {
-    state = state.updated(event)
+  private def handleEvent(event: Event): Unit = {
+    state = state.update(event)
+    println("Current state: " + state)
   }
 
   override def receiveRecover: Receive = {
-    case event: Incremented                         ⇒ updateState(event)
-    case SnapshotOffer(_, snapshot: IncrementState) ⇒ state = snapshot
+    case event: Incremented                       ⇒ handleEvent(event)
+    case event: Decremented                       ⇒ handleEvent(event)
+    case SnapshotOffer(_, snapshot: CounterState) ⇒ state = snapshot
   }
 
   override def receiveCommand: Receive = {
     case Increment(value) ⇒
       println(s"==> Incrementing with: $value")
-      persist(Incremented(value)) { event ⇒
-        println("==> Incremented")
-        state = state.updated(event)
-      }
+      persist(Incremented(value))(handleEvent)
+
+    case Decrement(value) ⇒
+      println(s"==> Decrementing with: $value")
+      persist(Decremented(value))(handleEvent)
 
     case "snap" ⇒ saveSnapshot(state)
   }
@@ -107,10 +117,16 @@ class Scheduler(counter: ActorRef, counterView: ActorRef)(implicit ec: Execution
 
   override def receive: Actor.Receive = {
     case "count" ⇒
-      if (count % 5 == 0) {
+      if (count % 2 == 0) {
         counter ! CounterActor.Increment(1)
         scheduleCount()
-      } else counterView ! CounterView.Get
+      } else if (count % 3 == 0) {
+        counter ! CounterActor.Decrement(1)
+        scheduleCount()
+      } else {
+        //        counterView ! CounterView.Get
+        scheduleCount()
+      }
     case xs: List[_] ⇒
       println(s"==> Received events: $xs")
       scheduleCount()

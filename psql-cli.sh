@@ -2,6 +2,7 @@
 echo "==================     Help for psql    ========================="
 echo "\l or \list                : shows all databases"
 echo "\d                         : shows all tables, views and sequences"
+echo "\dn                        : shows all schemas"
 echo "\d table_name              : describe table, view, sequence, or index"
 echo "\c database_name           : connect to a database"
 echo "\q                         : quit"
