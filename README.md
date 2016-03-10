@@ -11,6 +11,7 @@ It shows the following:
   - How to create, configure and use Custom Serializers to convert your data model (protobuf) to byte arrays and vice-versa,
   - How to query for events using the akka-persistence-query interface,
   - How to query tagged events using the akka-persistence-query interface,
+  - How to create your own custom persistency strategy using a custom journal dao using three tables, one `event-log` and two `event-content` tables for storing event data typed (that is query-able, I would not recommend this strategy though, but its possible!),
   - In short, how easy it is to create an event sourced application.
   
 Have fun!
