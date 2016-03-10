@@ -16,17 +16,14 @@
 
 package com.github.dnvriend
 
-import akka.NotUsed
-import akka.actor.{ ActorSystem, Actor, ActorRef, Props }
+import akka.actor.{ ActorSystem, Props }
+import akka.persistence.PersistentActor
 import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
-import akka.persistence.query.scaladsl.ReadJournal
-import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
-import akka.persistence.{ PersistentActor, SnapshotOffer }
-import akka.stream.Materializer
-import akka.stream.scaladsl.Source
-import com.github.dnvriend.CounterActor.Incremented
+import akka.persistence.query.PersistenceQuery
+import akka.stream.{ ActorMaterializer, Materializer }
+import com.typesafe.config.ConfigFactory
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.ExecutionContext
 
 object CounterActor {
   sealed trait Command
@@ -45,23 +42,27 @@ object CounterActor {
       case _: Decremented ⇒ copy(value - event.value)
     }
   }
+
+  final val PersistenceId: String = "COUNTER"
 }
 
-class CounterActor extends PersistentActor {
+class CounterActor(implicit ec: ExecutionContext) extends PersistentActor {
   import CounterActor._
-  override def persistenceId: String = "Counter"
+  val persistenceId: String = PersistenceId
 
   private var state = CounterState()
+  import scala.concurrent.duration._
+  context.system.scheduler.schedule(1.second, 1.second, self, Increment(1))
+  context.system.scheduler.schedule(5.second, 5.second, self, Decrement(1))
 
   private def handleEvent(event: Event): Unit = {
     state = state.update(event)
-    println("Current state: " + state)
+    println("==> Current state: " + state)
   }
 
   override def receiveRecover: Receive = {
-    case event: Incremented                       ⇒ handleEvent(event)
-    case event: Decremented                       ⇒ handleEvent(event)
-    case SnapshotOffer(_, snapshot: CounterState) ⇒ state = snapshot
+    case event: Incremented ⇒ handleEvent(event)
+    case event: Decremented ⇒ handleEvent(event)
   }
 
   override def receiveCommand: Receive = {
@@ -72,78 +73,21 @@ class CounterActor extends PersistentActor {
     case Decrement(value) ⇒
       println(s"==> Decrementing with: $value")
       persist(Decremented(value))(handleEvent)
-
-    case "snap" ⇒ saveSnapshot(state)
   }
 }
 
-object CounterView {
-  case object Get
-}
-
-class CounterView(readJournal: JdbcReadJournal)(implicit ec: ExecutionContext, mat: Materializer) extends Actor {
-  import akka.pattern.pipe
-
-  def source: Source[EventEnvelope, NotUsed] = readJournal.currentEventsByPersistenceId("Counter", 0, Long.MaxValue)
-
-  override def receive: Receive = {
-    case CounterView.Get ⇒
-      println("==> Getting the results")
-      val sendTo = sender()
-      getAllIncrements.pipeTo(sendTo)
-  }
-
-  def getAllIncrements: Future[List[Incremented]] = {
-    source.runFold(List.empty[Incremented])((result: List[Incremented], envelope: EventEnvelope) ⇒ {
-      envelope match {
-        case EventEnvelope(offset, persistenceId, sequenceNr, value: Incremented) ⇒
-          value :: result
-      }
-    })
-  }
-}
-
-class Scheduler(counter: ActorRef, counterView: ActorRef)(implicit ec: ExecutionContext) extends Actor {
-  import scala.concurrent.duration._
-  def scheduleCount(): Unit = {
-    context.system.scheduler.scheduleOnce(1.seconds, self, "count")
-    println(s"==> Scheduling a count ($count)")
-    count += 1
-  }
-
-  scheduleCount()
-
-  var count: Long = 0
-
-  override def receive: Actor.Receive = {
-    case "count" ⇒
-      if (count % 2 == 0) {
-        counter ! CounterActor.Increment(1)
-        scheduleCount()
-      } else if (count % 3 == 0) {
-        counter ! CounterActor.Decrement(1)
-        scheduleCount()
-      } else {
-        //        counterView ! CounterView.Get
-        scheduleCount()
-      }
-    case xs: List[_] ⇒
-      println(s"==> Received events: $xs")
-      scheduleCount()
-  }
-}
-
-object Counter extends App with Core {
-  override def resourceName: String = "counter-application.conf"
-
+object Counter extends App {
+  val configName = "counter-application.conf"
+  lazy val configuration = ConfigFactory.load(configName)
+  implicit val system: ActorSystem = ActorSystem("demo", configuration)
+  implicit val ec: ExecutionContext = system.dispatcher
+  implicit val mat: Materializer = ActorMaterializer()
+  lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
   val counter = system.actorOf(Props(new CounterActor))
-  val counterView = system.actorOf(Props(new CounterView(readJournal)))
-  val scheduler = system.actorOf(Props(new Scheduler(counter, counterView)))
 
   // async event listener
-  readJournal.eventsByPersistenceId("Counter", 0, Long.MaxValue).runForeach {
-    case EventEnvelope(offset, pid, seqNo, event) ⇒
-      println(s"==> Event added: offset: $offset, pid: $pid, seqNo: $seqNo, event: $event")
+  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach {
+    case e ⇒ println("Received event: " + e)
   }
 
   val banner = s"""

@@ -45,7 +45,7 @@ libraryDependencies ++= {
 
 fork in Test := true
 
-javaOptions in Test ++= Seq("-Xms30m","-Xmx30m")
+//javaOptions in Test ++= Seq("-Xms30m","-Xmx30m")
 
 parallelExecution in Test := false
 
@@ -75,7 +75,7 @@ Revolver.settings
 
 Revolver.enableDebugging(port = 5050, suspend = false)
 
-mainClass in Revolver.reStart := Some("com.github.dnvriend.Launch")
+mainClass in Revolver.reStart := Some("com.github.dnvriend.Counter")
 
 // enable protobuf plugin //
 // see: https://trueaccord.github.io/ScalaPB/sbt-settings.html

@@ -29,6 +29,7 @@ import akka.stream.{ ActorMaterializer, Materializer }
 import com.github.dnvriend.Person.PersonState
 import com.github.dnvriend.data.Event.{ PBFirstNameChanged, PBLastNameChanged, PBPersonCreated }
 import com.github.dnvriend.domain._
+import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Future }
@@ -121,9 +122,13 @@ class SupportDesk(repository: PersonRepository, readJournal: ReadJournal with Cu
   }
 }
 
-object Launch extends App with Core {
-  override def resourceName: String = "application.conf"
-
+object Launch extends App {
+  val configName = "launch-application.conf"
+  lazy val configuration = ConfigFactory.load(configName)
+  implicit val system: ActorSystem = ActorSystem("demo", configuration)
+  implicit val ec: ExecutionContext = system.dispatcher
+  implicit val mat: Materializer = ActorMaterializer()
+  lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
   val repository = new PersonRepository(readJournal)
   val supportDesk = system.actorOf(Props(new SupportDesk(repository, readJournal)))
 
