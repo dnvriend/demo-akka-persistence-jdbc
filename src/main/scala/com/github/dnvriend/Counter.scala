@@ -30,16 +30,14 @@ object CounterActor {
   final case class Increment(value: Int) extends Command
   final case class Decrement(value: Int) extends Command
 
-  sealed trait Event {
-    def value: Int
-  }
+  sealed trait Event
   final case class Incremented(value: Int) extends Event
   final case class Decremented(value: Int) extends Event
 
   case class CounterState(value: Int = 0) {
     def update(event: Event): CounterState = event match {
-      case _: Incremented ⇒ copy(value + event.value)
-      case _: Decremented ⇒ copy(value - event.value)
+      case Incremented(incrementBy) ⇒ copy(value + incrementBy)
+      case Decremented(decrementBy) ⇒ copy(value - decrementBy)
     }
   }
 
@@ -48,10 +46,13 @@ object CounterActor {
 
 class CounterActor(implicit ec: ExecutionContext) extends PersistentActor {
   import CounterActor._
+
   val persistenceId: String = PersistenceId
 
   private var state = CounterState()
+
   import scala.concurrent.duration._
+
   context.system.scheduler.schedule(1.second, 1.second, self, Increment(1))
   context.system.scheduler.schedule(5.second, 5.second, self, Decrement(1))
 
@@ -90,18 +91,19 @@ object Counter extends App {
     case e ⇒ println("Received event: " + e)
   }
 
-  val banner = s"""
-                  |Counter
-                  |=======
-                  |#####  ###### #    #  ####
-                  |#    # #      ##  ## #    #
-                  |#    # #####  # ## # #    #
-                  |#    # #      #    # #    #
-                  |#    # #      #    # #    #
-                  |#####  ###### #    #  ####
-                  |
+  val banner =
+    s"""
+       |Counter
+       |=======
+       |#####  ###### #    #  ####
+       |#    # #      ##  ## #    #
+       |#    # #####  # ## # #    #
+       |#    # #      #    # #    #
+       |#    # #      #    # #    #
+       |#####  ###### #    #  ####
+       |
                   |$BuildInfo
-                  |
+       |
   """.stripMargin
 
   println(banner)

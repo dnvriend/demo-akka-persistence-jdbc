@@ -19,8 +19,8 @@ package com.github.dnvriend.dao
 import com.github.dnvriend.dao.CounterJournalTables.EventType.EventType
 
 object CounterJournalTables {
-  final case class EventLogRow(persistenceId: String, sequenceNumber: Long, eventType: EventType.EventType, created: Long, tags: Option[String] = None)
-  final case class EventLogDeletedToRow(persistenceId: String, deletedTo: Long)
+  final case class JournalRow(persistenceId: String, sequenceNumber: Long, eventType: EventType.EventType, created: Long, tags: Option[String] = None)
+  final case class JournalDeletedToRow(persistenceId: String, deletedTo: Long)
   final case class IncrementedRow(persistenceId: String, sequenceNumber: Long, incrementedBy: Int)
   final case class DecrementedRow(persistenceId: String, sequenceNumber: Long, decrementedBy: Int)
 
@@ -37,8 +37,8 @@ trait CounterJournalTables {
 
   import profile.api._
 
-  class EventLogTable(_tableTag: Tag) extends Table[EventLogRow](_tableTag, _schemaName = Option("counter"), _tableName = "event_log") {
-    def * = (persistenceId, sequenceNumber, eventType, created, tags) <> (EventLogRow.tupled, EventLogRow.unapply)
+  class JournalTable(_tableTag: Tag) extends Table[JournalRow](_tableTag, _schemaName = Option("counter"), _tableName = "event_log") {
+    def * = (persistenceId, sequenceNumber, eventType, created, tags) <> (JournalRow.tupled, JournalRow.unapply)
 
     val persistenceId: Rep[String] = column[String]("persistence_id", O.Length(255, varying = true))
     val sequenceNumber: Rep[Long] = column[Long]("sequence_number")
@@ -53,16 +53,16 @@ trait CounterJournalTables {
     s ⇒ EventType.withName(s)
   )
 
-  lazy val EventLogTable = new TableQuery(tag ⇒ new EventLogTable(tag))
+  lazy val JournalTable = new TableQuery(tag ⇒ new JournalTable(tag))
 
-  class EventLogDeletedToTable(_tableTag: Tag) extends Table[EventLogDeletedToRow](_tableTag, _schemaName = Option("counter"), _tableName = "event_log_deleted_to") {
-    def * = (persistenceId, deletedTo) <> (EventLogDeletedToRow.tupled, EventLogDeletedToRow.unapply)
+  class JournalDeletedTo(_tableTag: Tag) extends Table[JournalDeletedToRow](_tableTag, _schemaName = Option("counter"), _tableName = "event_log_deleted_to") {
+    def * = (persistenceId, deletedTo) <> (JournalDeletedToRow.tupled, JournalDeletedToRow.unapply)
 
     val persistenceId: Rep[String] = column[String]("persistence_id", O.Length(255, varying = true))
     val deletedTo: Rep[Long] = column[Long]("deleted_to")
   }
 
-  lazy val EventLogDeletedToTable = new TableQuery(tag ⇒ new EventLogDeletedToTable(tag))
+  lazy val JournalDeletedToTable = new TableQuery(tag ⇒ new JournalDeletedTo(tag))
 
   class IncrementedTable(_tableTag: Tag) extends Table[IncrementedRow](_tableTag, _schemaName = Some("counter"), _tableName = "incremented") {
     def * = (persistenceId, sequenceNumber, incrementedBy) <> (IncrementedRow.tupled, IncrementedRow.unapply)
@@ -71,7 +71,7 @@ trait CounterJournalTables {
     val sequenceNumber: Rep[Long] = column[Long]("sequence_number")
     val incrementedBy: Rep[Int] = column[Int]("incremented_by")
     val pk = primaryKey("incremented_pk", (persistenceId, sequenceNumber))
-    lazy val incrementedFk = foreignKey("incr_el_fk", (persistenceId, sequenceNumber), EventLogTable)(r ⇒ (r.persistenceId, r.sequenceNumber), onUpdate = ForeignKeyAction.NoAction, onDelete = ForeignKeyAction.NoAction)
+    lazy val incrementedFk = foreignKey("incr_el_fk", (persistenceId, sequenceNumber), JournalTable)(r ⇒ (r.persistenceId, r.sequenceNumber), onUpdate = ForeignKeyAction.NoAction, onDelete = ForeignKeyAction.NoAction)
   }
 
   lazy val IncrementedTable = new TableQuery(tag ⇒ new IncrementedTable(tag))
@@ -83,7 +83,7 @@ trait CounterJournalTables {
     val sequenceNumber: Rep[Long] = column[Long]("sequence_number")
     val decrementedBy: Rep[Int] = column[Int]("decremented_by")
     val pk = primaryKey("decremented_pk", (persistenceId, sequenceNumber))
-    lazy val decrementedFk = foreignKey("decr_el_fk", (persistenceId, sequenceNumber), EventLogTable)(r ⇒ (r.persistenceId, r.sequenceNumber), onUpdate = ForeignKeyAction.NoAction, onDelete = ForeignKeyAction.NoAction)
+    lazy val decrementedFk = foreignKey("decr_el_fk", (persistenceId, sequenceNumber), JournalTable)(r ⇒ (r.persistenceId, r.sequenceNumber), onUpdate = ForeignKeyAction.NoAction, onDelete = ForeignKeyAction.NoAction)
   }
 
   lazy val DecrementedTable = new TableQuery(tag ⇒ new DecrementedTable(tag))
