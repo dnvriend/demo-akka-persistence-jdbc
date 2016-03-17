@@ -69,11 +69,13 @@ object Person {
   final val PersonShardName = "Person"
 }
 
-class Person extends PersistentActor {
+class Person extends PersistentActor with ActorLogging {
   import Person._
+  import ShardRegion.Passivate
 
   override val persistenceId: String = "Person-" + self.path.name
-  context.setReceiveTimeout(1.second)
+  
+  context.setReceiveTimeout(300.millis)
 
   var state = PersonState()
 
@@ -90,29 +92,11 @@ class Person extends PersistentActor {
   def now: Long = System.currentTimeMillis()
 
   override def receiveCommand: Receive = LoggingReceive {
-    case CreatePerson(firstName, lastName, _) ⇒
-      persist(PersonCreated(firstName, lastName, now))(handleEvent)
-
-    case ChangeFirstName(firstName, _) ⇒
-      persist(FirstNameChanged(firstName, now))(handleEvent)
-
-    case ChangeLastName(lastName, _) ⇒
-      persist(LastNameChanged(lastName, now))(handleEvent)
-
-    case ReceiveTimeout ⇒
-      context.stop(self)
-  }
-
-  override protected def onRecoveryFailure(cause: Throwable, event: Option[Any]): Unit = {
-    super.onRecoveryFailure(cause, event)
-    println("Shutting down due to: " + cause.getMessage)
-    System.exit(1)
-  }
-
-  override protected def onPersistFailure(cause: Throwable, event: Any, seqNr: Long): Unit = {
-    super.onPersistFailure(cause, event, seqNr)
-    println("Shutting down due to: " + cause.getMessage)
-    System.exit(1)
+    case CreatePerson(firstName, lastName, _) ⇒ persist(PersonCreated(firstName, lastName, now))(handleEvent)
+    case ChangeFirstName(firstName, _)        ⇒ persist(FirstNameChanged(firstName, now))(handleEvent)
+    case ChangeLastName(lastName, _)          ⇒ persist(LastNameChanged(lastName, now))(handleEvent)
+    case ReceiveTimeout                       ⇒ context.parent ! Passivate(stopMessage = SupervisorStrategy.Stop)
+    case SupervisorStrategy.Stop              ⇒ context.stop(self)
   }
 }
 
