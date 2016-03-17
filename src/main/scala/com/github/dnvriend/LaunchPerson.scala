@@ -17,32 +17,65 @@
 package com.github.dnvriend
 
 import java.text.SimpleDateFormat
-import java.util.{ Date, UUID }
+import java.util.Date
 
 import akka.actor._
+import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
 import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
 import akka.persistence.query.scaladsl._
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.stream.{ ActorMaterializer, Materializer }
-import com.github.dnvriend.Person.PersonState
 import com.github.dnvriend.data.Event.{ PBFirstNameChanged, PBLastNameChanged, PBPersonCreated }
-import com.github.dnvriend.domain._
 import com.typesafe.config.ConfigFactory
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
 
 object Person {
-  case class PersonState(firstName: String = "", lastName: String = "")
+
+  sealed trait Command
+
+  final case class CreatePerson(firstName: String, lastName: String, timestamp: Long) extends Command
+
+  final case class ChangeFirstName(firstName: String, timestamp: Long) extends Command
+
+  final case class ChangeLastName(lastName: String, timestamp: Long) extends Command
+
+  // events
+  sealed trait Event
+  final case class PersonCreated(firstName: String, lastName: String, timestamp: Long) extends Event
+  final case class FirstNameChanged(firstName: String, timestamp: Long) extends Event
+  final case class LastNameChanged(lastName: String, timestamp: Long) extends Event
+
+  // the state
+  final case class PersonState(firstName: String = "", lastName: String = "")
+
+  // necessary for cluster sharding
+  final case class EntityEnvelope(id: Long, payload: Any)
+
+  final val NumberOfShards: Int = 100
+
+  val extractEntityId: ShardRegion.ExtractEntityId = {
+    case EntityEnvelope(id, payload) ⇒ (id.toString, payload)
+  }
+
+  val extractShardId: ShardRegion.ExtractShardId = {
+    case EntityEnvelope(id, _) ⇒ (id % NumberOfShards).toString
+  }
+
+  final val PersonShardName = "Person"
 }
 
-class Person(override val persistenceId: String) extends PersistentActor {
-  var state = PersonState()
+class Person extends PersistentActor {
+  import Person._
 
-  context.setReceiveTimeout(100.millis)
+  override val persistenceId: String = "Person-" + self.path.name
+  context.setReceiveTimeout(1.second)
+
+  var state = PersonState()
 
   def handleEvent(event: Event): Unit = event match {
     case PersonCreated(firstName, lastName, _) ⇒ state = state.copy(firstName = firstName, lastName = lastName)
@@ -69,52 +102,35 @@ class Person(override val persistenceId: String) extends PersistentActor {
     case ReceiveTimeout ⇒
       context.stop(self)
   }
-}
 
-class PersonRepository(readJournal: ReadJournal with CurrentEventsByTagQuery)(implicit val system: ActorSystem, val mat: Materializer, val ec: ExecutionContext) {
-  def now: Long = System.currentTimeMillis()
-
-  def create(firstName: String, lastName: String): ActorRef = {
-    val id = UUID.randomUUID().toString
-    val person = find(id)
-    person ! CreatePerson(firstName, lastName, now)
-    person
+  override protected def onRecoveryFailure(cause: Throwable, event: Option[Any]): Unit = {
+    super.onRecoveryFailure(cause, event)
+    println("Shutting down due to: " + cause.getMessage)
+    System.exit(1)
   }
 
-  def find(id: String): ActorRef = system.actorOf(Props(new Person("person#" + id)), id)
-
-  def countPersons: Future[Long] = readJournal.currentEventsByTag("person-created", 0).runFold(0L) { case (c, _) ⇒ c + 1 }
+  override protected def onPersistFailure(cause: Throwable, event: Any, seqNr: Long): Unit = {
+    super.onPersistFailure(cause, event, seqNr)
+    println("Shutting down due to: " + cause.getMessage)
+    System.exit(1)
+  }
 }
 
-class SupportDesk(repository: PersonRepository, readJournal: ReadJournal with CurrentPersistenceIdsQuery)(implicit val mat: Materializer, ec: ExecutionContext) extends Actor with ActorLogging {
-  var counter: Long = 0
+class SupportDesk(personRegion: ActorRef, readJournal: ReadJournal with CurrentPersistenceIdsQuery)(implicit val mat: Materializer, ec: ExecutionContext) extends Actor with ActorLogging {
+  import Person._
+  var counter: Int = 0
 
   context.system.scheduler.schedule(1.second, 1.second, self, "GO")
 
   def now: Long = System.currentTimeMillis()
 
   override def receive: Receive = {
-    case _ if counter % 2 == 0 ⇒
-      counter += 1
-      val rnd = Random.nextInt(2048)
-      val actor = repository.create("random" + rnd, "random" + rnd)
-      actor ! ChangeFirstName("FOO" + rnd, now)
-      actor ! ChangeLastName("BARR" + rnd, now)
-
     case _ if counter % 3 == 0 ⇒
       counter += 1
-      val rnd = Random.nextInt(2048)
-      repository.create("foo" + rnd, "bar" + rnd) ! ChangeFirstName("FOO" + rnd, now)
-      for {
-        count ← repository.countPersons
-        num = if (count > Int.MaxValue) Int.MaxValue else count.toInt
-        pid ← readJournal.currentPersistenceIds()
-          .filter(_.startsWith("person#"))
-          .drop(Random.nextInt(num))
-          .take(1)
-          .runFold("")(_ + _)
-        id ← pid.split("person#").drop(1)
-      } repository.find(id) ! ChangeLastName("FROM_FOUND", now)
+      val rnd = Random.nextInt(counter)
+      personRegion ! EntityEnvelope(rnd, CreatePerson("FOO", "BAR", now))
+      personRegion ! EntityEnvelope(rnd, ChangeFirstName("FOO" + rnd, now))
+      personRegion ! EntityEnvelope(rnd, ChangeLastName("BARR" + rnd, now))
 
     case _ ⇒
       counter += 1
@@ -122,15 +138,24 @@ class SupportDesk(repository: PersonRepository, readJournal: ReadJournal with Cu
   }
 }
 
-object Launch extends App {
-  val configName = "launch-application.conf"
+object LaunchPerson extends App {
+  val configName = "person-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("demo", configuration)
+  implicit val system: ActorSystem = ActorSystem("ClusterSystem", configuration)
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
   lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
-  val repository = new PersonRepository(readJournal)
-  val supportDesk = system.actorOf(Props(new SupportDesk(repository, readJournal)))
+
+  // launch the personShardRegion; the returned actor must be used to send messages to the shard
+  val personRegion: ActorRef = ClusterSharding(system).start(
+    typeName = Person.PersonShardName,
+    entityProps = Props[Person],
+    settings = ClusterShardingSettings(system),
+    extractEntityId = Person.extractEntityId,
+    extractShardId = Person.extractShardId
+  )
+
+  val supportDesk = system.actorOf(Props(new SupportDesk(personRegion, readJournal)))
 
   //
   // the read models

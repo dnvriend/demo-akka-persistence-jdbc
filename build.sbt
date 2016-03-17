@@ -21,10 +21,10 @@ version := "1.0.0"
 
 scalaVersion := "2.11.8"
 
-resolvers += "spray repo" at "http://repo.spray.io"
+// the akka-persistence-jdbc plugin lives here
+resolvers += Resolver.jcenterRepo
 
-resolvers += "dnvriend at bintray" at "http://dl.bintray.com/dnvriend/maven"
-
+// the slick-extension library (which is used by akka-persistence-jdbc) lives here
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/maven-releases/"
 
 libraryDependencies ++= {
@@ -35,7 +35,9 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.11",
+    "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
+    "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.13",
     "ch.qos.logback" % "logback-classic" % "1.1.2",
     "org.postgresql" % "postgresql" % "9.4.1208.jre7",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
@@ -44,8 +46,6 @@ libraryDependencies ++= {
 }
 
 fork in Test := true
-
-//javaOptions in Test ++= Seq("-Xms30m","-Xmx30m")
 
 parallelExecution in Test := false
 

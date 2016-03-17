@@ -17,8 +17,8 @@
 package com.github.dnvriend.serializer
 
 import akka.serialization.SerializerWithStringManifest
+import com.github.dnvriend.Person.ChangeLastName
 import com.github.dnvriend.data.Command.PBChangeLastName
-import com.github.dnvriend.domain.ChangeLastName
 
 /**
  * Converts FirstName Google Protobuf Message

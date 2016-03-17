@@ -77,7 +77,7 @@ class CounterActor(implicit ec: ExecutionContext) extends PersistentActor {
   }
 }
 
-object Counter extends App {
+object LaunchCounter extends App {
   val configName = "counter-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
   implicit val system: ActorSystem = ActorSystem("demo", configuration)

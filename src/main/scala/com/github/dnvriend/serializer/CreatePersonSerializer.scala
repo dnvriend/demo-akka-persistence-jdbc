@@ -17,8 +17,8 @@
 package com.github.dnvriend.serializer
 
 import akka.serialization.SerializerWithStringManifest
+import com.github.dnvriend.Person.CreatePerson
 import com.github.dnvriend.data.Command.PBCreatePerson
-import com.github.dnvriend.domain.CreatePerson
 
 /**
  * Converts FirstName Google Protobuf Message
