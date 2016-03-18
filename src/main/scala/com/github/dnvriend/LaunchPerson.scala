@@ -19,20 +19,22 @@ package com.github.dnvriend
 import java.text.SimpleDateFormat
 import java.util.{ Date, UUID }
 
+import akka.NotUsed
 import akka.actor._
 import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
 import akka.event.LoggingReceive
-import akka.persistence.PersistentActor
 import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
 import akka.persistence.query.scaladsl._
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
+import akka.persistence.{ PersistentActor, RecoveryCompleted }
+import akka.stream.scaladsl.{ Sink, Source }
 import akka.stream.{ ActorMaterializer, Materializer }
-import com.github.dnvriend.data.Event.{ PBFirstNameChanged, PBLastNameChanged, PBPersonCreated }
+import com.github.dnvriend.dao.{ PersonDao, PersonDaoImpl }
+import com.github.dnvriend.data.Event.PBPersonCreated
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.util.Random
 
 object Person {
 
@@ -138,6 +140,69 @@ object DateUtil {
     new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.XXX").format(new Date(timestamp))
 }
 
+object InsertPersonInPersonTableHandler {
+  sealed trait Event
+  final case class PersonHandled(offset: Long) extends Event
+  final case class PersonNotHandled(offset: Long) extends Event
+  final case class Completed()
+  final case class Ack()
+  final case class Init()
+
+  final case class SavePersonSucceeded(offset: Long, sender: ActorRef)
+  final case class SavePersonFailed(offset: Long, t: Throwable, sender: ActorRef)
+}
+
+class InsertPersonInPersonTableHandler(readJournal: JdbcReadJournal, personDao: PersonDao)(implicit ec: ExecutionContext, mat: Materializer) extends PersistentActor {
+  import InsertPersonInPersonTableHandler._
+  override def persistenceId: String = "InsertPersonInPersonTableHandler"
+
+  var recoverOffset: Long = 0
+
+  var query: NotUsed = null
+
+  def handleEvent(event: Event): Unit = event match {
+    case PersonHandled(newOffset)    ⇒ recoverOffset = newOffset
+    case PersonNotHandled(newOffset) ⇒ recoverOffset = newOffset
+  }
+
+  override def receiveRecover: Receive = LoggingReceive {
+    case event: Event ⇒ handleEvent(event)
+    case RecoveryCompleted ⇒
+      println("====> RECOVERY COMPLETED, recovering from: " + recoverOffset)
+      query = readJournal.eventsByTag("person-created", recoverOffset)
+        .runWith(Sink.actorRefWithAck(self, Init(), Ack(), Completed()))
+  }
+
+  override def receiveCommand: Receive = LoggingReceive {
+    case _: Completed ⇒ context.stop(self)
+
+    case _: Init      ⇒ sender() ! Ack() // provide demand
+
+    case EventEnvelope(offset, pid, seqno, PBPersonCreated(firstName, lastName, timestamp)) ⇒
+      // side effect only in command handler
+      val theSender = sender()
+      personDao.savePerson(pid, firstName, lastName).map { _ ⇒
+        println("Saving Person!!")
+        self ! SavePersonSucceeded(offset, theSender)
+      } recover {
+        case t: Throwable ⇒
+          t.printStackTrace()
+          self ! SavePersonFailed(offset, t, theSender)
+      }
+
+    case SavePersonSucceeded(offset, theSender) ⇒
+      persist(PersonHandled(offset))(handleEvent)
+      theSender ! Ack() // get next message
+
+    case SavePersonFailed(offset, t, theSender) ⇒
+      t.printStackTrace()
+      persist(PersonNotHandled(offset))(handleEvent)
+      theSender ! Ack() // get next message
+
+    case e ⇒ println("=====> DROPPING: " + e)
+  }
+}
+
 object LaunchPerson extends App {
   val configName = "person-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
@@ -157,40 +222,46 @@ object LaunchPerson extends App {
 
   val supportDesk = system.actorOf(Props(new SupportDesk(personRegion, readJournal)))
 
+  val personReadModelDatabase = slick.jdbc.JdbcBackend.Database.forConfig("person-read-model", system.settings.config)
+
+  val personDao = new PersonDaoImpl(personReadModelDatabase, slick.driver.PostgresDriver)
+
+  val insertPersonInPersonTableHandler = system.actorOf(Props(new InsertPersonInPersonTableHandler(readJournal, personDao)))
+
+  //  //
+  //  // the read models
+  //  //
+
+  //  // counts unique pids
+  //  readJournal.allPersistenceIds().runFold(List.empty[String]) {
+  //    case (listOfPids, pid) ⇒
+  //      println(s"New persistenceId received: $pid")
+  //      listOfPids :+ pid
+  //  }
   //
-  // the read models
+  //  // counts created persons
+  //  readJournal.eventsByTag("person-created", 0).runFold(0L) {
+  //    case (num, EventEnvelope(_, pid, seqno, PBPersonCreated(firstName, lastName, timestamp))) ⇒
+  //      val total = num + 1
+  //      println(s"Person created $firstName, $lastName on ${DateUtil.format(timestamp)} got id: $pid/$seqno, total persons: $total")
+  //      total
+  //  }
   //
-
-  // counts unique pids
-  readJournal.allPersistenceIds().runFold(List.empty[String]) {
-    case (listOfPids, pid) ⇒
-      println(s"New persistenceId received: $pid")
-      listOfPids :+ pid
-  }
-
-  // counts created persons
-  readJournal.eventsByTag("person-created", 0).runFold(0L) {
-    case (num, EventEnvelope(_, pid, seqno, PBPersonCreated(firstName, lastName, timestamp))) ⇒
-      val total = num + 1
-      println(s"Person created $firstName, $lastName on ${DateUtil.format(timestamp)} got id: $pid/$seqno, total persons: $total")
-      total
-  }
-
-  // count first name changed
-  readJournal.eventsByTag("first-name-changed", 0).runFold(0L) {
-    case (num, EventEnvelope(_, pid, seqno, PBFirstNameChanged(newName, timestamp))) ⇒
-      val total = num + 1
-      println(s"First name changed of pid/seqno: $pid/$seqno to $newName on ${DateUtil.format(timestamp)}, total changed: $total")
-      total
-  }
-
-  // counts last name changed
-  readJournal.eventsByTag("last-name-changed", 0).runFold(0L) {
-    case (num, EventEnvelope(_, pid, seqno, PBLastNameChanged(newName, timestamp))) ⇒
-      val total = num + 1
-      println(s"Last name changed of pid/seqno: $pid/$seqno to $newName on ${DateUtil.format(timestamp)}, total changed: $total")
-      total
-  }
+  //  // count first name changed
+  //  readJournal.eventsByTag("first-name-changed", 0).runFold(0L) {
+  //    case (num, EventEnvelope(_, pid, seqno, PBFirstNameChanged(newName, timestamp))) ⇒
+  //      val total = num + 1
+  //      println(s"First name changed of pid/seqno: $pid/$seqno to $newName on ${DateUtil.format(timestamp)}, total changed: $total")
+  //      total
+  //  }
+  //
+  //  // counts last name changed
+  //  readJournal.eventsByTag("last-name-changed", 0).runFold(0L) {
+  //    case (num, EventEnvelope(_, pid, seqno, PBLastNameChanged(newName, timestamp))) ⇒
+  //      val total = num + 1
+  //      println(s"Last name changed of pid/seqno: $pid/$seqno to $newName on ${DateUtil.format(timestamp)}, total changed: $total")
+  //      total
+  //  }
 
   val banner = s"""
     |

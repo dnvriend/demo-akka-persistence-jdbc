@@ -1,3 +1,4 @@
+-- akka-persistence-jdbc schema
 CREATE SCHEMA IF NOT EXISTS akka_persistence_jdbc;
 
 DROP TABLE IF EXISTS akka_persistence_jdbc.journal;
@@ -26,6 +27,19 @@ CREATE TABLE IF NOT EXISTS akka_persistence_jdbc.snapshot (
   created BIGINT NOT NULL,
   snapshot BYTEA NOT NULL,
   PRIMARY KEY(persistence_id, sequence_number)
+);
+
+-- person schema
+CREATE SCHEMA IF NOT EXISTS person;
+
+DROP TABLE IF EXISTS person.persons;
+
+CREATE TABLE IF NOT EXISTS person.persons (
+  id VARCHAR(255) NOT NULL,
+  firstname VARCHAR(255) NOT NULL,
+  lastname VARCHAR(255) NOT NULL,
+  updated BIGINT NOT NULL,
+  primary key(id)
 );
 
 -- counter schema
