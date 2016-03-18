@@ -143,33 +143,32 @@ object DateUtil {
 object InsertPersonInPersonTableHandler {
   sealed trait Event
   final case class PersonHandled(offset: Long) extends Event
-  final case class PersonNotHandled(offset: Long) extends Event
+  final case class PersonInserted(id: String) extends Event
   final case class Completed()
   final case class Ack()
   final case class Init()
 
   final case class SavePersonSucceeded(offset: Long, sender: ActorRef)
-  final case class SavePersonFailed(offset: Long, t: Throwable, sender: ActorRef)
 }
 
+/**
+  * Handles only PersonCreated events to insert a record in the person.persons table (read model)
+  */
 class InsertPersonInPersonTableHandler(readJournal: JdbcReadJournal, personDao: PersonDao)(implicit ec: ExecutionContext, mat: Materializer) extends PersistentActor {
   import InsertPersonInPersonTableHandler._
   override def persistenceId: String = "InsertPersonInPersonTableHandler"
 
-  var recoverOffset: Long = 0
-
-  var query: NotUsed = null
+  var recoverOffsetPersonCreated: Long = 0
 
   def handleEvent(event: Event): Unit = event match {
-    case PersonHandled(newOffset)    ⇒ recoverOffset = newOffset
-    case PersonNotHandled(newOffset) ⇒ recoverOffset = newOffset
+    case PersonHandled(newOffset) ⇒ recoverOffsetPersonCreated = newOffset
+    case _                        ⇒
   }
 
   override def receiveRecover: Receive = LoggingReceive {
     case event: Event ⇒ handleEvent(event)
     case RecoveryCompleted ⇒
-      println("====> RECOVERY COMPLETED, recovering from: " + recoverOffset)
-      query = readJournal.eventsByTag("person-created", recoverOffset)
+      readJournal.eventsByTag("person-created", recoverOffsetPersonCreated)
         .runWith(Sink.actorRefWithAck(self, Init(), Ack(), Completed()))
   }
 
@@ -182,24 +181,40 @@ class InsertPersonInPersonTableHandler(readJournal: JdbcReadJournal, personDao: 
       // side effect only in command handler
       val theSender = sender()
       personDao.savePerson(pid, firstName, lastName).map { _ ⇒
-        println("Saving Person!!")
+        persist(PersonInserted(pid))(handleEvent)
         self ! SavePersonSucceeded(offset, theSender)
-      } recover {
-        case t: Throwable ⇒
-          t.printStackTrace()
-          self ! SavePersonFailed(offset, t, theSender)
       }
 
     case SavePersonSucceeded(offset, theSender) ⇒
       persist(PersonHandled(offset))(handleEvent)
       theSender ! Ack() // get next message
+  }
+}
 
-    case SavePersonFailed(offset, t, theSender) ⇒
-      t.printStackTrace()
-      persist(PersonNotHandled(offset))(handleEvent)
-      theSender ! Ack() // get next message
+object UpdatePersonFirstNameHandler {
+  sealed trait Event
+  final case class PersonHandled(offset: Long) extends Event
+  final case class PersonAggregated(pid: String, firstname: String) extends Event
+}
 
-    case e ⇒ println("=====> DROPPING: " + e)
+/**
+  * Aggregates PersonCreated and FirstnameChanged for a certain persistence id
+  * It will only persist a PersonAggregated event
+  */
+class UpdatePersonFirstNameAggregator extends PersistentActor {
+  override def persistenceId: String = "UpdatePersonFirstNameHandler"
+
+  var recoverOffsetPersonCreated: Long = 0
+  var recoverOffsetFirstNameChanged: Long = 0
+
+  var query: NotUsed = null
+
+  override def receiveRecover: Receive = {
+    case RecoveryCompleted ⇒
+  }
+
+  override def receiveCommand: Receive = {
+    case _ ⇒
   }
 }
 
