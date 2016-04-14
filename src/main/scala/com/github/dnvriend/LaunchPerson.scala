@@ -152,8 +152,8 @@ object InsertPersonInPersonTableHandler {
 }
 
 /**
-  * Handles only PersonCreated events to insert a record in the person.persons table (read model)
-  */
+ * Handles only PersonCreated events to insert a record in the person.persons table (read model)
+ */
 class InsertPersonInPersonTableHandler(readJournal: JdbcReadJournal, personDao: PersonDao)(implicit ec: ExecutionContext, mat: Materializer) extends PersistentActor {
   import InsertPersonInPersonTableHandler._
   override def persistenceId: String = "InsertPersonInPersonTableHandler"
@@ -198,9 +198,9 @@ object UpdatePersonFirstNameHandler {
 }
 
 /**
-  * Aggregates PersonCreated and FirstnameChanged for a certain persistence id
-  * It will only persist a PersonAggregated event
-  */
+ * Aggregates PersonCreated and FirstnameChanged for a certain persistence id
+ * It will only persist a PersonAggregated event
+ */
 class UpdatePersonFirstNameAggregator extends PersistentActor {
   override def persistenceId: String = "UpdatePersonFirstNameHandler"
 

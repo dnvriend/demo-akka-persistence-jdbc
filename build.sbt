@@ -28,7 +28,7 @@ resolvers += Resolver.jcenterRepo
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/maven-releases/"
 
 libraryDependencies ++= {
-  val akkaVersion = "2.4.2"
+  val akkaVersion = "2.4.4"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
@@ -37,7 +37,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.15",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.17" changing(),
     "ch.qos.logback" % "logback-classic" % "1.1.2",
     "org.postgresql" % "postgresql" % "9.4.1208.jre7",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,

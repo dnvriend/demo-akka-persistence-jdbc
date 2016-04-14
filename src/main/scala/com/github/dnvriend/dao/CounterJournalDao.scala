@@ -38,6 +38,8 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, syst
 
   implicit val mat: Materializer = ActorMaterializer()(system)
 
+  println("===> Creating CounterJournalDao: " + this.hashCode() + "actorsystem: " + system.hashCode())
+
   override def allPersistenceIdsSource: Source[String, NotUsed] =
     Source.fromPublisher(db.stream(JournalTable.map(_.persistenceId).distinct.result))
 
@@ -95,6 +97,7 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, syst
 
   // only handle non-serialized messages
   override def writeList(xs: Iterable[SerializationResult]): Future[Unit] = {
+    println("Writing list: " + this.hashCode())
     val collectPf: PartialFunction[SerializationResult, NotSerialized] = {
       case e: NotSerialized ⇒ e
     }
