@@ -81,6 +81,7 @@ object LaunchCounter extends App {
   val configName = "counter-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
   implicit val system: ActorSystem = ActorSystem("demo", configuration)
+  sys.addShutdownHook(system.terminate())
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
   lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)

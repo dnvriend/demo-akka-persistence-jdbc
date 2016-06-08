@@ -243,41 +243,6 @@ object LaunchPerson extends App {
 
   val insertPersonInPersonTableHandler = system.actorOf(Props(new InsertPersonInPersonTableHandler(readJournal, personDao)))
 
-  //  //
-  //  // the read models
-  //  //
-
-  //  // counts unique pids
-  //  readJournal.allPersistenceIds().runFold(List.empty[String]) {
-  //    case (listOfPids, pid) ⇒
-  //      println(s"New persistenceId received: $pid")
-  //      listOfPids :+ pid
-  //  }
-  //
-  //  // counts created persons
-  //  readJournal.eventsByTag("person-created", 0).runFold(0L) {
-  //    case (num, EventEnvelope(_, pid, seqno, PBPersonCreated(firstName, lastName, timestamp))) ⇒
-  //      val total = num + 1
-  //      println(s"Person created $firstName, $lastName on ${DateUtil.format(timestamp)} got id: $pid/$seqno, total persons: $total")
-  //      total
-  //  }
-  //
-  //  // count first name changed
-  //  readJournal.eventsByTag("first-name-changed", 0).runFold(0L) {
-  //    case (num, EventEnvelope(_, pid, seqno, PBFirstNameChanged(newName, timestamp))) ⇒
-  //      val total = num + 1
-  //      println(s"First name changed of pid/seqno: $pid/$seqno to $newName on ${DateUtil.format(timestamp)}, total changed: $total")
-  //      total
-  //  }
-  //
-  //  // counts last name changed
-  //  readJournal.eventsByTag("last-name-changed", 0).runFold(0L) {
-  //    case (num, EventEnvelope(_, pid, seqno, PBLastNameChanged(newName, timestamp))) ⇒
-  //      val total = num + 1
-  //      println(s"Last name changed of pid/seqno: $pid/$seqno to $newName on ${DateUtil.format(timestamp)}, total changed: $total")
-  //      total
-  //  }
-
   val banner = s"""
     |
     |#####  ###### #    #  ####

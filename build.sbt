@@ -28,7 +28,7 @@ resolvers += Resolver.jcenterRepo
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/maven-releases/"
 
 libraryDependencies ++= {
-  val akkaVersion = "2.4.4"
+  val akkaVersion = "2.4.7"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
@@ -37,7 +37,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.17" changing(),
+    "com.twitter" %% "chill-akka" % "0.8.0",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.24" changing(),
     "ch.qos.logback" % "logback-classic" % "1.1.2",
     "org.postgresql" % "postgresql" % "9.4.1208.jre7",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
@@ -49,14 +50,16 @@ fork in Test := true
 
 parallelExecution in Test := false
 
+scalacOptions ++= Seq("-feature", "-language:higherKinds", "-language:implicitConversions", "-deprecation", "-Ybackend:GenBCode", "-Ydelambdafy:method", "-target:jvm-1.8")
+
 licenses +=("Apache-2.0", url("http://opensource.org/licenses/apache2.0.php"))
 
 // enable scala code formatting //
 import scalariform.formatter.preferences._
+import com.typesafe.sbt.SbtScalariform
 
-scalariformSettings
-
-ScalariformKeys.preferences := ScalariformKeys.preferences.value
+// Scalariform settings
+SbtScalariform.autoImport.scalariformPreferences := SbtScalariform.autoImport.scalariformPreferences.value
   .setPreference(AlignSingleLineCaseStatements, true)
   .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100)
   .setPreference(DoubleIndentClassDeclaration, true)
@@ -70,21 +73,20 @@ headers := Map(
   "conf" -> Apache2_0("2016", "Dennis Vriend", "#")
 )
 
-// enable shooting the jvm in the head //
-Revolver.settings
-
-Revolver.enableDebugging(port = 5050, suspend = false)
-
-mainClass in Revolver.reStart := Some("com.github.dnvriend.Counter")
+// enable sbt-revolver
+Revolver.settings ++ Seq(
+  Revolver.enableDebugging(port = 5050, suspend = false),
+  mainClass in reStart := Some("com.github.dnvriend.Counter")
+)
 
 // enable protobuf plugin //
-// see: https://trueaccord.github.io/ScalaPB/sbt-settings.html
+// https://trueaccord.github.io/ScalaPB/sbt-settings.html
 import com.trueaccord.scalapb.{ScalaPbPlugin => PB}
 
 PB.protobufSettings
 
 // protoc-jar which is on the sbt classpath //
-// see: https://github.com/os72/protoc-jar
+// https://github.com/os72/protoc-jar
 PB.runProtoc in PB.protobufConfig := (args =>
   com.github.os72.protocjar.Protoc.runProtoc("-v300" +: args.toArray))
 
