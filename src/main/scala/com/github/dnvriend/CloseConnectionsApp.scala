@@ -26,11 +26,12 @@ import akka.util.Timeout
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-object Application extends App {
+object CloseConnectionsApp extends App {
   implicit val timeout = Timeout(1.second)
   val configName = "default-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
   val system = ActorSystem("app", configuration)
+  sys.addShutdownHook(system.terminate())
 
   val f = system.actorOf(Props(new PersistentActor {
     override def persistenceId: String = "the-guy"

@@ -3,10 +3,6 @@ resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositori
 
 resolvers += "bintray-sbt-plugin-releases" at "http://dl.bintray.com/content/sbt/sbt-plugin-releases"
 
-// to show a dependency graph
-// https://github.com/jrudolph/sbt-dependency-graph
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.8.2")
-
 // to format scala source code
 // https://github.com/sbt/sbt-scalariform
 addSbtPlugin("org.scalariform" % "sbt-scalariform" % "1.6.0")

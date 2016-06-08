@@ -38,11 +38,11 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
     "com.twitter" %% "chill-akka" % "0.8.0",
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.24" changing(),
-    "ch.qos.logback" % "logback-classic" % "1.1.2",
-    "org.postgresql" % "postgresql" % "9.4.1208.jre7",
+    "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.2.25" changing(),
+    "ch.qos.logback" % "logback-classic" % "1.1.7",
+    "org.postgresql" % "postgresql" % "9.4.1208",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
-    "org.scalatest" %% "scalatest" % "2.2.4" % Test
+    "org.scalatest" %% "scalatest" % "2.2.6" % Test
   )
 }
 
