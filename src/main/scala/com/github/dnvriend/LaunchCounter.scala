@@ -18,8 +18,6 @@ package com.github.dnvriend
 
 import akka.actor.{ ActorSystem, Props }
 import akka.persistence.PersistentActor
-import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
-import akka.persistence.query.PersistenceQuery
 import akka.stream.{ ActorMaterializer, Materializer }
 import com.typesafe.config.ConfigFactory
 
@@ -84,10 +82,10 @@ object LaunchCounter extends App {
   sys.addShutdownHook(system.terminate())
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
-  lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
   val counter = system.actorOf(Props(new CounterActor))
 
   // async event listener
+  //  lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
   // does not yet work as we have to implements a custom ReadJournalDao :)
   //  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach {
   //    case e ⇒ println(": >>== Received event ==<< : " + e)

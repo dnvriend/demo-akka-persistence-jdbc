@@ -21,19 +21,25 @@ import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
 import com.typesafe.config.ConfigFactory
 import akka.pattern.ask
+import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
+import akka.persistence.query.PersistenceQuery
+import akka.stream.{ ActorMaterializer, Materializer }
 import akka.util.Timeout
 
-import scala.concurrent.Await
+import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
 
 object CloseConnectionsApp extends App {
   implicit val timeout = Timeout(1.second)
   val configName = "default-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
-  val system = ActorSystem("app", configuration)
+  implicit val system = ActorSystem("app", configuration)
+  implicit val mat: Materializer = ActorMaterializer()
+  implicit val ec: ExecutionContext = system.dispatcher
+  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
   sys.addShutdownHook(system.terminate())
 
-  val f = system.actorOf(Props(new PersistentActor {
+  val actorResult: Future[Any] = system.actorOf(Props(new PersistentActor {
     override def persistenceId: String = "the-guy"
 
     override def receiveRecover: Receive = {
@@ -50,6 +56,10 @@ object CloseConnectionsApp extends App {
     }
   })) ? "hello world"
 
-  Await.ready(f, 5.seconds)
+  Await.ready(for {
+    _ ← actorResult
+    _ ← readJournal.allPersistenceIds().take(1).runForeach(pid ⇒ println(s": >>== Received PersistenceId: $pid ==<< :"))
+    _ ← readJournal.eventsByPersistenceId("the-guy", 0, Long.MaxValue).take(1).runForeach(envelope ⇒ println(s": >>== Received envelope: $envelope ==<< :"))
+  } yield (), 5.seconds)
   Await.ready(system.terminate(), 5.seconds)
 }
