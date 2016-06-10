@@ -52,14 +52,15 @@ object CloseConnectionsApp extends App {
     }
 
     override def receiveCommand: Receive = LoggingReceive {
-      case c: String ⇒ persist(c)(handle(sender(), _))
+      case c: String        ⇒ persist(c)(handle(sender(), _))
+      case xs: List[String] ⇒ persistAll(xs)(handle(sender(), _))
     }
-  })) ? "hello world"
+  })) ? List.fill(25)("hello world")
 
   Await.ready(for {
     _ ← actorResult
     _ ← readJournal.allPersistenceIds().take(1).runForeach(pid ⇒ println(s": >>== Received PersistenceId: $pid ==<< :"))
-    _ ← readJournal.eventsByPersistenceId("the-guy", 0, Long.MaxValue).take(1).runForeach(envelope ⇒ println(s": >>== Received envelope: $envelope ==<< :"))
+    _ ← readJournal.eventsByPersistenceId("the-guy", 0, Long.MaxValue).take(25).runForeach(envelope ⇒ println(s": >>== Received envelope: $envelope ==<< :"))
   } yield (), 5.seconds)
   Await.ready(system.terminate(), 5.seconds)
 }
