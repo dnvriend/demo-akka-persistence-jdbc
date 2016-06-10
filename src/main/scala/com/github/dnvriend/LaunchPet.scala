@@ -19,8 +19,10 @@ package com.github.dnvriend
 import akka.actor.{ Actor, ActorSystem, Props, Terminated }
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
+import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
+import akka.persistence.query.PersistenceQuery
 import akka.serialization.SerializationExtension
-import com.github.dnvriend.domain.PetDomain
+import akka.stream.{ ActorMaterializer, Materializer }
 import com.github.dnvriend.domain.PetDomain._
 import com.typesafe.config.ConfigFactory
 
@@ -72,9 +74,17 @@ object LaunchPet extends App {
   val configName = "pet-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
   implicit val system: ActorSystem = ActorSystem("demo", configuration)
+  implicit val mat: Materializer = ActorMaterializer()
   sys.addShutdownHook(system.terminate())
   implicit val ec: ExecutionContext = system.dispatcher
+  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  final val PersistenceId = "persister"
 
-  val persisterProps = Props(new Persister("persister"))
+  // async queries :)
+  readJournal.eventsByPersistenceId(PersistenceId, 0, Long.MaxValue).runForeach {
+    case e ⇒ println(": >>== Received event ==<< : " + e)
+  }
+
+  val persisterProps = Props(new Persister(PersistenceId))
   val supervisor = system.actorOf(Props(new PersisterSupervisor(persisterProps)))
 }

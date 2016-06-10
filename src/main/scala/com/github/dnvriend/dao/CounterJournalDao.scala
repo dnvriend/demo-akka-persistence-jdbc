@@ -19,43 +19,23 @@ package com.github.dnvriend.dao
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.persistence.PersistentRepr
+import akka.persistence.jdbc.config.JournalConfig
 import akka.persistence.jdbc.dao.JournalDao
 import akka.persistence.jdbc.serialization.{ NotSerialized, SerializationResult }
 import akka.stream.scaladsl.{ Flow, Source }
 import akka.stream.{ ActorMaterializer, Materializer }
 import com.github.dnvriend.CounterActor.{ Decremented, Incremented }
-import com.github.dnvriend.dao.CounterJournalTables.{ IncrementedRow, DecrementedRow, JournalRow, EventType }
+import com.github.dnvriend.dao.CounterJournalTables.{ DecrementedRow, EventType, IncrementedRow, JournalRow }
 import slick.driver.JdbcProfile
 import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 
-class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, system: ActorSystem) extends JournalDao with CounterJournalTables {
+class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, journalConfig: JournalConfig)(implicit ec: ExecutionContext, mat: Materializer) extends JournalDao with CounterJournalTables {
   import profile.api._
 
-  implicit val ec: ExecutionContext = system.dispatcher
-
-  implicit val mat: Materializer = ActorMaterializer()(system)
-
-  println("===> Creating CounterJournalDao: " + this.hashCode() + "actorsystem: " + system.hashCode())
-
-  override def allPersistenceIdsSource: Source[String, NotUsed] =
-    Source.fromPublisher(db.stream(JournalTable.map(_.persistenceId).distinct.result))
-
-  override def eventsByPersistenceIdAndTag(persistenceId: String, tag: String, offset: Long): Source[SerializationResult, NotUsed] = ???
-
-  override def eventsByTag(tag: String, offset: Long): Source[SerializationResult, NotUsed] = ???
-
   override def delete(persistenceId: String, toSequenceNr: Long): Future[Unit] = ???
-
-  override def persistenceIds(queryListOfPersistenceIds: Iterable[String]): Future[Seq[String]] = {
-    val query = for {
-      persistenceIdsInJournal ← JournalTable.map(_.persistenceId)
-      if persistenceIdsInJournal inSetBind queryListOfPersistenceIds
-    } yield persistenceIdsInJournal
-    db.run(query.result)
-  }
 
   override def messages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long): Source[SerializationResult, NotUsed] = {
     val messagesQuery = JournalTable
@@ -77,8 +57,6 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, syst
       }
   }
 
-  override def countJournal: Future[Int] = db.run(JournalTable.length.result)
-
   override def highestSequenceNr(persistenceId: String, fromSequenceNr: Long): Future[Long] = {
     val actions = (for {
       seqNumFoundInJournalTable ← JournalTable.filter(_.persistenceId === persistenceId).filter(_.sequenceNumber >= fromSequenceNr).map(_.sequenceNumber).max.result
@@ -96,7 +74,7 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, syst
       }
 
   // only handle non-serialized messages
-  override def writeList(xs: Iterable[SerializationResult]): Future[Unit] = {
+  def writeList(xs: Iterable[SerializationResult]): Future[Unit] = {
     println("Writing list: " + this.hashCode())
     val collectPf: PartialFunction[SerializationResult, NotSerialized] = {
       case e: NotSerialized ⇒ e

@@ -23,11 +23,11 @@ import akka.NotUsed
 import akka.actor._
 import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
 import akka.event.LoggingReceive
-import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
+import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
 import akka.persistence.query.scaladsl._
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.persistence.{ PersistentActor, RecoveryCompleted }
-import akka.stream.scaladsl.{ Sink, Source }
+import akka.stream.scaladsl.Sink
 import akka.stream.{ ActorMaterializer, Materializer }
 import com.github.dnvriend.dao.{ PersonDao, PersonDaoImpl }
 import com.github.dnvriend.data.Event.PBPersonCreated

@@ -18,7 +18,7 @@ package com.github.dnvriend
 
 import akka.actor.{ ActorSystem, Props }
 import akka.persistence.PersistentActor
-import akka.persistence.jdbc.query.journal.scaladsl.JdbcReadJournal
+import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.stream.{ ActorMaterializer, Materializer }
 import com.typesafe.config.ConfigFactory
@@ -88,9 +88,10 @@ object LaunchCounter extends App {
   val counter = system.actorOf(Props(new CounterActor))
 
   // async event listener
-  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach {
-    case e ⇒ println("Received event: " + e)
-  }
+  // does not yet work as we have to implements a custom ReadJournalDao :)
+  //  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach {
+  //    case e ⇒ println(": >>== Received event ==<< : " + e)
+  //  }
 
   val banner =
     s"""
