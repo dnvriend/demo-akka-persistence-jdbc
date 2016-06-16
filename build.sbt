@@ -38,6 +38,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
+    "com.lihaoyi" %% "pprint" % "0.4.1",
+    "org.scalaz" %% "scalaz-core" % "7.2.3",
     "com.twitter" %% "chill-akka" % "0.8.0",
     "com.github.dnvriend" %% "akka-persistence-jdbc" % akkaPersistenceJdbcVersion changing(),
     "ch.qos.logback" % "logback-classic" % "1.1.7",
