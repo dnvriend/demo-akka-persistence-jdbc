@@ -29,7 +29,7 @@ resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/maven-rel
 
 libraryDependencies ++= {
   val akkaVersion = "2.4.7"
-  val akkaPersistenceJdbcVersion = "2.3.3"
+  val akkaPersistenceJdbcVersion = "2.4.0"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,

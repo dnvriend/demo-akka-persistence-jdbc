@@ -17,13 +17,12 @@
 package com.github.dnvriend.dao
 
 import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.persistence.PersistentRepr
 import akka.persistence.jdbc.config.JournalConfig
 import akka.persistence.jdbc.dao.JournalDao
-import akka.persistence.jdbc.serialization.{ NotSerialized, SerializationResult }
+import akka.persistence.{ AtomicWrite, PersistentRepr }
+import akka.serialization.Serialization
+import akka.stream.Materializer
 import akka.stream.scaladsl.{ Flow, Source }
-import akka.stream.{ ActorMaterializer, Materializer }
 import com.github.dnvriend.CounterActor.{ Decremented, Incremented }
 import com.github.dnvriend.dao.CounterJournalTables.{ DecrementedRow, EventType, IncrementedRow, JournalRow }
 import slick.driver.JdbcProfile
@@ -32,12 +31,13 @@ import slick.jdbc.JdbcBackend
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 
-class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, journalConfig: JournalConfig)(implicit ec: ExecutionContext, mat: Materializer) extends JournalDao with CounterJournalTables {
+class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, journalConfig: JournalConfig, serialization: Serialization)(implicit ec: ExecutionContext, mat: Materializer) extends JournalDao with CounterJournalTables {
+
   import profile.api._
 
   override def delete(persistenceId: String, toSequenceNr: Long): Future[Unit] = ???
 
-  override def messages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long): Source[SerializationResult, NotUsed] = {
+  override def messages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long): Source[Try[PersistentRepr], NotUsed] = {
     val messagesQuery = JournalTable
       .filter(_.persistenceId === persistenceId)
       .filter(_.sequenceNumber >= fromSequenceNr)
@@ -49,11 +49,11 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, jour
         case JournalRow(pid, seqno, EventType.Incremented, _, _) ⇒
           db.run(IncrementedTable.filter(_.persistenceId === pid).filter(_.sequenceNumber === seqno).result)
             .map(_.head)
-            .map(row ⇒ NotSerialized(pid, seqno, PersistentRepr(Incremented(row.incrementedBy), seqno), None))
+            .map(row ⇒ Success(PersistentRepr(Incremented(row.incrementedBy), seqno)))
         case JournalRow(pid, seqno, EventType.Decremented, _, _) ⇒
           db.run(DecrementedTable.filter(_.persistenceId === pid).filter(_.sequenceNumber === seqno).result)
             .map(_.head)
-            .map(row ⇒ NotSerialized(pid, seqno, PersistentRepr(Decremented(row.decrementedBy), seqno), None))
+            .map(row ⇒ Success(PersistentRepr(Decremented(row.decrementedBy), seqno)))
       }
   }
 
@@ -66,34 +66,26 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, jour
     db.run(actions)
   }
 
-  override def writeFlow: Flow[Try[Iterable[SerializationResult]], Try[Iterable[SerializationResult]], NotUsed] =
-    Flow[Try[Iterable[SerializationResult]]]
-      .mapAsync(1) {
-        case element @ Success(xs) ⇒ writeList(xs).map(_ ⇒ element)
-        case element @ Failure(t)  ⇒ Future.failed(t)
-      }
+  override def writeFlow: Flow[AtomicWrite, Try[Unit], NotUsed] =
+    Flow[AtomicWrite].map(_.payload).mapAsync(1)(persistListOfRepr)
 
-  // only handle non-serialized messages
-  def writeList(xs: Iterable[SerializationResult]): Future[Unit] = {
-    println("Writing list: " + this.hashCode())
-    val collectPf: PartialFunction[SerializationResult, NotSerialized] = {
-      case e: NotSerialized ⇒ e
-    }
-    // the whole set of SerializationResult, ie. the AtomicWrite must all be
-    // persisted in one transaction, or all fail, thus let's process batch wise and
-    // drop the streaming strategy.
-    val xx = xs.collect(collectPf).map {
-      case NotSerialized(pid, seqno, PersistentRepr(event: Incremented, _), tags, created) ⇒
+  def persistListOfRepr(reprs: Seq[PersistentRepr]): Future[Try[Unit]] = {
+    val xx = reprs.map {
+      case repr @ PersistentRepr(Incremented(value), seqno) ⇒
         for {
-          _ ← JournalTable += JournalRow(pid, seqno, EventType.Incremented, created, tags)
-          _ ← IncrementedTable += IncrementedRow(pid, seqno, event.value)
+          _ ← JournalTable += JournalRow(repr.persistenceId, seqno, EventType.Incremented, System.currentTimeMillis())
+          _ ← IncrementedTable += IncrementedRow(repr.persistenceId, seqno, value)
         } yield ()
-      case NotSerialized(pid, seqno, PersistentRepr(event: Decremented, _), tags, created) ⇒
+      case repr @ PersistentRepr(Decremented(value), seqno) ⇒
         for {
-          _ ← JournalTable += JournalRow(pid, seqno, EventType.Decremented, created, tags)
-          _ ← DecrementedTable += DecrementedRow(pid, seqno, event.value)
+          _ ← JournalTable += JournalRow(repr.persistenceId, seqno, EventType.Decremented, System.currentTimeMillis())
+          _ ← DecrementedTable += DecrementedRow(repr.persistenceId, seqno, value)
         } yield ()
     }
-    db.run(DBIO.sequence(xx).transactionally).map(_ ⇒ ())
+    db.run(DBIO.sequence(xx).transactionally).map(_ ⇒ Success(())).recover {
+      case t: Throwable ⇒
+        t.printStackTrace()
+        Failure(t)
+    }
   }
 }
