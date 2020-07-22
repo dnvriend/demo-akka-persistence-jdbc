@@ -21,7 +21,7 @@ import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
 import com.typesafe.config.ConfigFactory
 import akka.pattern.ask
-import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
+import akka.persistence.postgres.query.scaladsl.PostgresReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.stream.{ ActorMaterializer, Materializer }
 import akka.util.Timeout
@@ -36,7 +36,7 @@ object CloseConnectionsApp extends App {
   implicit val system = ActorSystem("app", configuration)
   implicit val mat: Materializer = ActorMaterializer()
   implicit val ec: ExecutionContext = system.dispatcher
-  val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
   sys.addShutdownHook(system.terminate())
 
   val actorResult: Future[Any] = system.actorOf(Props(new PersistentActor {
@@ -59,7 +59,7 @@ object CloseConnectionsApp extends App {
 
   Await.ready(for {
     _ ← actorResult
-    _ ← readJournal.allPersistenceIds().take(1).runForeach(pid ⇒ println(s": >>== Received PersistenceId: $pid ==<< :"))
+    _ ← readJournal.persistenceIds().take(1).runForeach(pid ⇒ println(s": >>== Received PersistenceId: $pid ==<< :"))
     _ ← readJournal.eventsByPersistenceId("the-guy", 0, Long.MaxValue).take(25).runForeach(envelope ⇒ println(s": >>== Received envelope: $envelope ==<< :"))
   } yield (), 5.seconds)
   Await.ready(system.terminate(), 5.seconds)

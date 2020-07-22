@@ -14,10 +14,9 @@
 # limitations under the License.
 #
 #!/bin/bash
-export VM_HOST="${VM_HOST:-boot2docker}"
+export VM_HOST="${VM_HOST:-localhost}"
 
 # Wait for a certain service to become available
-# Usage: wait 3306 Mysql
 wait() {
 while true; do
   if ! nc -z $VM_HOST $1
@@ -31,6 +30,7 @@ while true; do
 done;
 }
 
-docker rm -f $(docker ps -aq)
-docker-compose up -d
+docker-compose kill postgres
+docker-compose rm -f postgres
+docker-compose up -d postgres
 wait 5432 Postgres

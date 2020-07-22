@@ -23,9 +23,9 @@ import akka.NotUsed
 import akka.actor._
 import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
 import akka.event.LoggingReceive
-import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
+import akka.persistence.postgres.query.scaladsl.PostgresReadJournal
 import akka.persistence.query.scaladsl._
-import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
+import akka.persistence.query.{ EventEnvelope, Offset, PersistenceQuery }
 import akka.persistence.{ PersistentActor, RecoveryCompleted }
 import akka.stream.scaladsl.Sink
 import akka.stream.{ ActorMaterializer, Materializer }
@@ -142,23 +142,23 @@ object DateUtil {
 
 object InsertPersonInPersonTableHandler {
   sealed trait Event
-  final case class PersonHandled(offset: Long) extends Event
+  final case class PersonHandled(offset: Offset) extends Event
   final case class PersonInserted(id: String) extends Event
   final case class Completed()
   final case class Ack()
   final case class Init()
 
-  final case class SavePersonSucceeded(offset: Long, sender: ActorRef)
+  final case class SavePersonSucceeded(offset: Offset, sender: ActorRef)
 }
 
 /**
  * Handles only PersonCreated events to insert a record in the person.persons table (read model)
  */
-class InsertPersonInPersonTableHandler(readJournal: JdbcReadJournal, personDao: PersonDao)(implicit ec: ExecutionContext, mat: Materializer) extends PersistentActor {
+class InsertPersonInPersonTableHandler(readJournal: PostgresReadJournal, personDao: PersonDao)(implicit ec: ExecutionContext, mat: Materializer) extends PersistentActor {
   import InsertPersonInPersonTableHandler._
   override def persistenceId: String = "InsertPersonInPersonTableHandler"
 
-  var recoverOffsetPersonCreated: Long = 0
+  var recoverOffsetPersonCreated: Offset = Offset.sequence(0L)
 
   def handleEvent(event: Event): Unit = event match {
     case PersonHandled(newOffset) ⇒ recoverOffsetPersonCreated = newOffset
@@ -225,7 +225,7 @@ object LaunchPerson extends App {
   sys.addShutdownHook(system.terminate())
   implicit val ec: ExecutionContext = system.dispatcher
   implicit val mat: Materializer = ActorMaterializer()
-  lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  lazy val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
 
   // launch the personShardRegion; the returned actor must be used to send messages to the shard
   val personRegion: ActorRef = ClusterSharding(system).start(
@@ -233,14 +233,13 @@ object LaunchPerson extends App {
     entityProps = Props[Person],
     settings = ClusterShardingSettings(system),
     extractEntityId = Person.extractEntityId,
-    extractShardId = Person.extractShardId
-  )
+    extractShardId = Person.extractShardId)
 
   val supportDesk = system.actorOf(Props(new SupportDesk(personRegion, readJournal)))
 
   val personReadModelDatabase = slick.jdbc.JdbcBackend.Database.forConfig("person-read-model", system.settings.config)
 
-  val personDao = new PersonDaoImpl(personReadModelDatabase, slick.driver.PostgresDriver)
+  val personDao = new PersonDaoImpl(personReadModelDatabase)
 
   val insertPersonInPersonTableHandler = system.actorOf(Props(new InsertPersonInPersonTableHandler(readJournal, personDao)))
 

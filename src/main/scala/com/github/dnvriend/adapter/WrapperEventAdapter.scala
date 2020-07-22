@@ -17,13 +17,13 @@
 package com.github.dnvriend.adapter
 
 import akka.persistence.journal.{ EventSeq, ReadEventAdapter }
-import pprint._, Config.Colors.PPrintConfig
+import pprint._
 
 class WrapperEventAdapter extends ReadEventAdapter {
   override def fromJournal(event: Any, manifest: String): EventSeq = event match {
     case Wrapper(payload, created) ⇒
-      log2("Payload: " + payload)
-      log2("Created: " + created)
+      log("Payload: " + payload)
+      log("Created: " + created)
       EventSeq.single(payload)
   }
 }

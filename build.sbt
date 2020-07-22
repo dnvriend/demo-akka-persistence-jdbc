@@ -13,39 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-name := "demo-akka-persistence-jdbc"
+name := "demo-akka-persistence-postgres"
 
-organization := "com.github.dnvriend"
+organization := "pl.mkubala"
 
 version := "1.0.0"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.12"
 
-// the akka-persistence-jdbc plugin lives here
-resolvers += Resolver.jcenterRepo
+// the akka-persistence-postgres plugin lives here
+resolvers += Resolver.mavenLocal
 
-// the slick-extension library (which is used by akka-persistence-jdbc) lives here
-resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/maven-releases/"
+// the slick-extension library (which is used by akka-persistence-postgres) lives here
+resolvers += "Typesafe Releases" at "https://repo.typesafe.com/typesafe/maven-releases/"
 
 libraryDependencies ++= {
-  val akkaVersion = "2.4.7"
-  val akkaPersistenceJdbcVersion = "2.4.0"
+  val akkaVersion = "2.6.8"
+  val akkaPersistencePostgresVersion = "0.0.0+848-b191b39b+20200722-1240"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
     "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
-    "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
+    "com.typesafe.akka" %% "akka-persistence-query" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
-    "com.lihaoyi" %% "pprint" % "0.4.1",
-    "org.scalaz" %% "scalaz-core" % "7.2.3",
-    "com.twitter" %% "chill-akka" % "0.8.0",
-    "com.github.dnvriend" %% "akka-persistence-jdbc" % akkaPersistenceJdbcVersion changing(),
+    "com.lihaoyi" %% "pprint" % "0.5.6",
+    "com.twitter" %% "chill-akka" % "0.9.5",
+    "com.swissborg" %% "akka-persistence-postgres" % akkaPersistencePostgresVersion changing(),
     "ch.qos.logback" % "logback-classic" % "1.1.7",
-    "org.postgresql" % "postgresql" % "9.4.1208",
-    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
-    "org.scalatest" %% "scalatest" % "2.2.6" % Test
+    "com.typesafe.akka" %% "akka-testkit" % akkaVersion
   )
 }
 
@@ -53,13 +50,14 @@ fork in Test := true
 
 parallelExecution in Test := false
 
-scalacOptions ++= Seq("-feature", "-language:higherKinds", "-language:implicitConversions", "-deprecation", "-Ybackend:GenBCode", "-Ydelambdafy:method", "-target:jvm-1.8")
+scalacOptions ++= Seq("-feature", "-language:higherKinds", "-language:implicitConversions", "-deprecation", "-Ydelambdafy:method", "-target:jvm-1.8")
 
 licenses +=("Apache-2.0", url("http://opensource.org/licenses/apache2.0.php"))
 
 // enable scala code formatting //
 import scalariform.formatter.preferences._
 import com.typesafe.sbt.SbtScalariform
+import de.heikoseeberger.sbtheader.LicenseStyle
 
 // Scalariform settings
 SbtScalariform.autoImport.scalariformPreferences := SbtScalariform.autoImport.scalariformPreferences.value
@@ -69,29 +67,30 @@ SbtScalariform.autoImport.scalariformPreferences := SbtScalariform.autoImport.sc
   .setPreference(RewriteArrowSymbols, true)
 
 // enable updating file headers //
-import de.heikoseeberger.sbtheader.license.Apache2_0
+headerLicense := Some(HeaderLicense.ALv2("2016", "Dennis Vriend", HeaderLicenseStyle.Detailed))
 
-headers := Map(
-  "scala" -> Apache2_0("2016", "Dennis Vriend"),
-  "conf" -> Apache2_0("2016", "Dennis Vriend", "#")
-)
+headerMappings := headerMappings.value +
+  (HeaderFileType.scala -> HeaderCommentStyle.cStyleBlockComment) +
+  (HeaderFileType.conf -> HeaderCommentStyle.hashLineComment)
 
 // enable sbt-revolver
 Revolver.settings ++ Seq(
   Revolver.enableDebugging(port = 5050, suspend = false),
-  mainClass in reStart := Some("com.github.dnvriend.Counter")
+  mainClass in reStart := Some("com.github.dnvriend.LaunchCounter")
 )
 
 // enable protobuf plugin //
-// https://trueaccord.github.io/ScalaPB/sbt-settings.html
-import com.trueaccord.scalapb.{ScalaPbPlugin => PB}
 
-PB.protobufSettings
+PB.targets in Compile := Seq(
+  scalapb.gen() -> (sourceManaged in Compile).value
+)
+
+//PB.protobufSettings
 
 // protoc-jar which is on the sbt classpath //
 // https://github.com/os72/protoc-jar
-PB.runProtoc in PB.protobufConfig := (args =>
-  com.github.os72.protocjar.Protoc.runProtoc("-v300" +: args.toArray))
+//PB.runProtoc in PB.protobufConfig := (args =>
+//  com.github.os72.protocjar.Protoc.runProtoc("-v300" +: args.toArray))
 
 // build info configuration //
 buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)

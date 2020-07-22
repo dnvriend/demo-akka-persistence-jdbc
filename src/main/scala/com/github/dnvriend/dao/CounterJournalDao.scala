@@ -17,27 +17,31 @@
 package com.github.dnvriend.dao
 
 import akka.NotUsed
-import akka.persistence.jdbc.config.JournalConfig
-import akka.persistence.jdbc.dao.JournalDao
+import akka.persistence.postgres.config.JournalConfig
+import akka.persistence.postgres.journal.dao.{ BaseJournalDaoWithReadMessages, JournalDao }
 import akka.persistence.{ AtomicWrite, PersistentRepr }
 import akka.serialization.Serialization
 import akka.stream.Materializer
-import akka.stream.scaladsl.{ Flow, Source }
+import akka.stream.scaladsl.Source
 import com.github.dnvriend.CounterActor.{ Decremented, Incremented }
 import com.github.dnvriend.dao.CounterJournalTables.{ DecrementedRow, EventType, IncrementedRow, JournalRow }
-import slick.driver.JdbcProfile
 import slick.jdbc.JdbcBackend
 
+import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 
-class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, journalConfig: JournalConfig, serialization: Serialization)(implicit ec: ExecutionContext, mat: Materializer) extends JournalDao with CounterJournalTables {
+class CounterJournalDao(db: JdbcBackend#Database, journalConfig: JournalConfig, serialization: Serialization)(implicit val ec: ExecutionContext, val mat: Materializer) extends JournalDao with BaseJournalDaoWithReadMessages with CounterJournalTables {
 
-  import profile.api._
+  import akka.persistence.postgres.db.ExtendedPostgresProfile.api._
 
   override def delete(persistenceId: String, toSequenceNr: Long): Future[Unit] = ???
 
-  override def messages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long): Source[Try[PersistentRepr], NotUsed] = {
+  override def messages(
+    persistenceId: String,
+    fromSequenceNr: Long,
+    toSequenceNr: Long,
+    max: Long): Source[Try[(PersistentRepr, Long)], NotUsed] = {
     val messagesQuery = JournalTable
       .filter(_.persistenceId === persistenceId)
       .filter(_.sequenceNumber >= fromSequenceNr)
@@ -49,11 +53,11 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, jour
         case JournalRow(pid, seqno, EventType.Incremented, _, _) ⇒
           db.run(IncrementedTable.filter(_.persistenceId === pid).filter(_.sequenceNumber === seqno).result)
             .map(_.head)
-            .map(row ⇒ Success(PersistentRepr(Incremented(row.incrementedBy), seqno)))
+            .map(row ⇒ Success((PersistentRepr(Incremented(row.incrementedBy), seqno), 0L)))
         case JournalRow(pid, seqno, EventType.Decremented, _, _) ⇒
           db.run(DecrementedTable.filter(_.persistenceId === pid).filter(_.sequenceNumber === seqno).result)
             .map(_.head)
-            .map(row ⇒ Success(PersistentRepr(Decremented(row.decrementedBy), seqno)))
+            .map(row ⇒ Success((PersistentRepr(Decremented(row.decrementedBy), seqno), 0L)))
       }
   }
 
@@ -66,8 +70,8 @@ class CounterJournalDao(db: JdbcBackend#Database, val profile: JdbcProfile, jour
     db.run(actions)
   }
 
-  override def writeFlow: Flow[AtomicWrite, Try[Unit], NotUsed] =
-    Flow[AtomicWrite].map(_.payload).mapAsync(1)(persistListOfRepr)
+  override def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]): Future[immutable.Seq[Try[Unit]]] =
+    Future.sequence(messages.map(m ⇒ persistListOfRepr(m.payload)))
 
   def persistListOfRepr(reprs: Seq[PersistentRepr]): Future[Try[Unit]] = {
     val xx = reprs.map {

@@ -16,4 +16,4 @@
 
 package com.github.dnvriend.adapter
 
-case class Wrapper(payload: Any, created: Long)
+case class Wrapper(payload: Any, ordering: Long)

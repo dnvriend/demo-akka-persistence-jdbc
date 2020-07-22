@@ -37,8 +37,8 @@ trait PersonDao {
   def persons: Future[Iterable[PersonEntity]]
 }
 
-class PersonDaoImpl(db: JdbcBackend#Database, val profile: JdbcProfile)(implicit ec: ExecutionContext) extends PersonDao with PersonTables {
-  import profile.api._
+class PersonDaoImpl(db: JdbcBackend#Database)(implicit ec: ExecutionContext) extends PersonDao with PersonTables {
+  import akka.persistence.postgres.db.ExtendedPostgresProfile.api._
 
   override def savePerson(id: String, firstname: String, lastname: String): Future[Unit] =
     db.run(PersonTable += PersonTableRow(id, firstname, lastname, System.currentTimeMillis())).map(_ ⇒ ())

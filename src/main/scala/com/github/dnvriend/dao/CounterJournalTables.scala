@@ -33,9 +33,8 @@ object CounterJournalTables {
 
 trait CounterJournalTables {
   import CounterJournalTables._
-  val profile: slick.driver.JdbcProfile
 
-  import profile.api._
+  import akka.persistence.postgres.db.ExtendedPostgresProfile.api._
 
   class JournalTable(_tableTag: Tag) extends Table[JournalRow](_tableTag, _schemaName = Option("counter"), _tableName = "event_log") {
     def * = (persistenceId, sequenceNumber, eventType, created, tags) <> (JournalRow.tupled, JournalRow.unapply)
@@ -50,8 +49,7 @@ trait CounterJournalTables {
 
   implicit val eventTypeEnumMapper = MappedColumnType.base[EventType, String](
     e ⇒ e.toString,
-    s ⇒ EventType.withName(s)
-  )
+    s ⇒ EventType.withName(s))
 
   lazy val JournalTable = new TableQuery(tag ⇒ new JournalTable(tag))
 

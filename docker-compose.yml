@@ -1,5 +1,5 @@
 postgres:
-  image: postgres:latest
+  image: postgres:11-alpine
   container_name: postgres
   environment:
     - "TZ=Europe/Amsterdam"

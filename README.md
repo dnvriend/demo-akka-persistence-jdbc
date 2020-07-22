@@ -1,8 +1,8 @@
-# demo-akka-persistence-jdbc
-This is a small demo project on how to configure your application to use [akka-persistence-jdbc](https://github.com/dnvriend/akka-persistence-jdbc).
+# demo-akka-persistence-postgres
+This is a small demo project on how to configure your application to use [akka-persistence-postgres](https://github.com/SwissBorg/akka-persistence-postgres).
 
 It shows the following:
-  - How to configure akka-persistence-jdbc,
+  - How to configure akka-persistence-postgres,
   - How to connect to a Postgres database,
   - The postgres database schema to use,
   - How to persist events to the journal,

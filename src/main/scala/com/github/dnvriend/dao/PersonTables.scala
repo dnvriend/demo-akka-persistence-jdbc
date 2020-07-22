@@ -23,9 +23,8 @@ object PersonTables {
 }
 
 trait PersonTables {
-  val profile: slick.driver.JdbcProfile
 
-  import profile.api._
+  import akka.persistence.postgres.db.ExtendedPostgresProfile.api._
 
   class PersonTable(_tableTag: Tag) extends Table[PersonTableRow](_tableTag, _schemaName = Option("person"), _tableName = "persons") {
     def * = (id, firstname, lastname, updated) <> (PersonTableRow.tupled, PersonTableRow.unapply)
