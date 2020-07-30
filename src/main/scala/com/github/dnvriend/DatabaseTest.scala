@@ -20,10 +20,10 @@ import java.util.Base64
 
 import com.github.tminglei.slickpg.utils.PlainSQLUtils
 import com.github.tminglei.slickpg.utils.PlainSQLUtils.mkGetResult
-import slick.jdbc.{GetResult, SetParameter}
+import slick.jdbc.{ GetResult, SetParameter }
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{ Await, ExecutionContext }
 
 trait DbCleanup {
 
@@ -55,9 +55,9 @@ object DatabaseTest extends App with DbCleanup {
     ("pid1", 1, Seq(1, 2, 3, 4), "Dog"),
     ("pid1", 2, Seq(1, 2, 3, 4), "Cat"),
     ("pid1", 3, Seq(1, 2, 3, 4), "Fish")).map {
-    case (pid, seqno, tags, message) ⇒
-      sqlu"INSERT INTO journal (persistence_id, sequence_number, tags, message) VALUES ($pid, $seqno, $tags, ${message.getBytes("UTF-8")})"
-  }).transactionally
+      case (pid, seqno, tags, message) ⇒
+        sqlu"INSERT INTO journal (persistence_id, sequence_number, tags, message) VALUES ($pid, $seqno, $tags, ${message.getBytes("UTF-8")})"
+    }).transactionally
 
   val queryEvents = sql"SELECT persistence_id, sequence_number, ordering, tags, message FROM journal".as[JournalRow]
 
