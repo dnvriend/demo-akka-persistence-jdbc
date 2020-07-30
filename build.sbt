@@ -21,15 +21,12 @@ version := "1.0.0"
 
 scalaVersion := "2.12.12"
 
-// the akka-persistence-postgres plugin lives here
-resolvers += Resolver.mavenLocal
-
-// the slick-extension library (which is used by akka-persistence-postgres) lives here
-resolvers += "Typesafe Releases" at "https://repo.typesafe.com/typesafe/maven-releases/"
+// the akka-persistence-postgres plugin snapshots live here
+resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies ++= {
   val akkaVersion = "2.6.8"
-  val akkaPersistencePostgresVersion = "0.0.0+848-b191b39b+20200722-1240"
+  val akkaPersistencePostgresVersion = "0.0.0+856-64fb13a4-SNAPSHOT"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
