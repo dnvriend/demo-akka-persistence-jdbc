@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend
+package com.github.mkubala
 
 import akka.actor.{ ActorSystem, Props }
 import akka.persistence.PersistentActor

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend
+package com.github.mkubala
 
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.event.LoggingReceive

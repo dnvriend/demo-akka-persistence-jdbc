@@ -1,5 +1,5 @@
 syntax = "proto3";
-option java_package = "com.github.dnvriend.data";
+option java_package = "com.github.mkubala.data";
 option optimize_for = SPEED;
 
 // see: https://developers.google.com/protocol-buffers/docs/proto3

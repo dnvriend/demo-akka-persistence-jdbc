@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend
+package com.github.mkubala
 
 import java.util.Base64
 

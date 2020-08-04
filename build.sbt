@@ -73,7 +73,7 @@ headerMappings := headerMappings.value ++ HeaderLicenseSettings.mappings
 // enable sbt-revolver
 Revolver.settings ++ Seq(
   Revolver.enableDebugging(port = 5050, suspend = false),
-  mainClass in reStart := Some("com.github.dnvriend.LaunchCounter")
+  mainClass in reStart := Some("com.github.mkubala.LaunchCounter")
 )
 
 // enable protobuf plugin //
@@ -85,7 +85,7 @@ PB.targets in Compile := Seq(
 // build info configuration //
 buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
 
-buildInfoPackage := "com.github.dnvriend"
+buildInfoPackage := "com.github.mkubala"
 
 // enable plugins
 enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)

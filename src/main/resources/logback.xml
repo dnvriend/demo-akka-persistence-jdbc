@@ -25,7 +25,7 @@
     </appender>
 
     <!-- <logger name="com.github.benmanes.caffeine" level="off" />-->
-    <!--<logger name="org.github.dnvriend" level="debug"/>-->
+    <!--<logger name="org.github.mkubala" level="debug"/>-->
     <!--<logger name="akka.persistence.postgres" level="debug"/>-->
     <!--<logger name="akka.actor" level="debug"/>-->
     <!--<logger name="slick.backend.DatabaseComponent.action" level="debug" />-->

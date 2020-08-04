@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.dao
+package com.github.mkubala.dao
 
 import akka.NotUsed
 import akka.persistence.postgres.config.JournalConfig
@@ -24,8 +24,8 @@ import akka.persistence.{ AtomicWrite, PersistentRepr }
 import akka.serialization.Serialization
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
-import com.github.dnvriend.CounterActor.{ Decremented, Incremented }
-import com.github.dnvriend.dao.CounterJournalTables.{ DecrementedRow, EventType, IncrementedRow, JournalRow }
+import com.github.mkubala.CounterActor.{ Decremented, Incremented }
+import com.github.mkubala.dao.CounterJournalTables.{ DecrementedRow, EventType, IncrementedRow, JournalRow }
 import slick.jdbc.JdbcBackend
 
 import scala.collection.immutable

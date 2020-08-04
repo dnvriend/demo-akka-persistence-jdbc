@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.adapter
+package com.github.mkubala.adapter
 
 import akka.persistence.journal.{ EventAdapter, EventSeq, Tagged }
-import com.github.dnvriend.Person._
-import com.github.dnvriend.data.Event._
+import com.github.mkubala.Person._
+import com.github.mkubala.data.Event._
 
 class TaggingEventAdapter extends EventAdapter {
   override def manifest(event: Any): String = ""

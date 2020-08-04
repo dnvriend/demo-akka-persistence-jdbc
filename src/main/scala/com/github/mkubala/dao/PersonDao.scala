@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.dao
+package com.github.mkubala.dao
 
-import com.github.dnvriend.dao.PersonDao.PersonEntity
-import com.github.dnvriend.dao.PersonTables.PersonTableRow
+import com.github.mkubala.dao.PersonDao.PersonEntity
+import com.github.mkubala.dao.PersonTables.PersonTableRow
 import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ ExecutionContext, Future }

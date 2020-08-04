@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend
+package com.github.mkubala
 
 import akka.actor.{ Actor, ActorSystem, Props, Terminated }
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
 import akka.persistence.postgres.query.scaladsl.PostgresReadJournal
 import akka.persistence.query.PersistenceQuery
-import com.github.dnvriend.domain.PetDomain._
+import com.github.mkubala.domain.PetDomain._
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.ExecutionContext

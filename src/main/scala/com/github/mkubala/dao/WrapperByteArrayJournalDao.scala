@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.dao
+package com.github.mkubala.dao
 
 import akka.persistence.PersistentRepr
 import akka.persistence.postgres.JournalRow
@@ -23,7 +23,7 @@ import akka.persistence.postgres.config.JournalConfig
 import akka.persistence.postgres.journal.dao.{ ByteArrayJournalSerializer, FlatJournalDao }
 import akka.serialization.Serialization
 import akka.stream.Materializer
-import com.github.dnvriend.adapter.Wrapper
+import com.github.mkubala.adapter.Wrapper
 import slick.jdbc.JdbcBackend._
 
 import scala.concurrent.ExecutionContext

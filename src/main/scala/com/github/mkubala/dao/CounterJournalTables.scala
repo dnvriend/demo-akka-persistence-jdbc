@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.dao
+package com.github.mkubala.dao
 
-import com.github.dnvriend.dao.CounterJournalTables.EventType.EventType
+import com.github.mkubala.dao.CounterJournalTables.EventType.EventType
 
 object CounterJournalTables {
   final case class JournalRow(persistenceId: String, sequenceNumber: Long, eventType: EventType.EventType, created: Long, tags: Option[String] = None)

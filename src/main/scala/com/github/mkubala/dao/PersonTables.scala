@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.dao
+package com.github.mkubala.dao
 
-import com.github.dnvriend.dao.PersonTables.PersonTableRow
+import com.github.mkubala.dao.PersonTables.PersonTableRow
 
 object PersonTables {
   final case class PersonTableRow(id: String, firstname: String, lastname: String, updated: Long)

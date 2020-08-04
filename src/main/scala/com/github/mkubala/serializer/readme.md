@@ -1,4 +1,4 @@
-# Package: com.github.dnvriend.serializer
+# Package: com.github.mkubala.serializer
 Place your `akka.serializer.Serializer`(s) here. They will be used by akka-persistence to serialize
 messages to an Array[Byte], just before they are persisted to the data store. The serializer will also be used to 
 serialize messages when sending a message between actors.

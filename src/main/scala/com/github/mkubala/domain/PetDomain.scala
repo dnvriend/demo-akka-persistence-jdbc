@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.domain
+package com.github.mkubala.domain
 
 object PetDomain {
   type FirstName = String

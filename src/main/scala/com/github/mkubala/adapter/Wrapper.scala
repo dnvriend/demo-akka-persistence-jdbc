@@ -15,6 +15,6 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.adapter
+package com.github.mkubala.adapter
 
 case class Wrapper(payload: Any, ordering: Long)

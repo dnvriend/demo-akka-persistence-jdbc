@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend
+package com.github.mkubala
 
 import java.text.SimpleDateFormat
 import java.util.{ Date, UUID }
@@ -29,8 +29,8 @@ import akka.persistence.query.{ EventEnvelope, Offset, PersistenceQuery }
 import akka.persistence.{ PersistentActor, RecoveryCompleted }
 import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
-import com.github.dnvriend.dao.{ PersonDao, PersonDaoImpl }
-import com.github.dnvriend.data.Event.PBPersonCreated
+import com.github.mkubala.dao.{ PersonDao, PersonDaoImpl }
+import com.github.mkubala.data.Event.PBPersonCreated
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.ExecutionContext

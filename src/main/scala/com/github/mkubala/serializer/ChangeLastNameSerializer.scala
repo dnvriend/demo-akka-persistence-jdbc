@@ -15,21 +15,21 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.serializer
+package com.github.mkubala.serializer
 
 import akka.serialization.SerializerWithStringManifest
-import com.github.dnvriend.Person.CreatePerson
-import com.github.dnvriend.data.Command.PBCreatePerson
+import com.github.mkubala.Person.ChangeLastName
+import com.github.mkubala.data.Command.PBChangeLastName
 
 /**
  * Converts FirstName Google Protobuf Message
  * to byte array and back
  */
-class CreatePersonSerializer extends SerializerWithStringManifest {
+class ChangeLastNameSerializer extends SerializerWithStringManifest {
 
-  override def identifier: Int = 102
+  override def identifier: Int = 101
 
-  final val Manifest = classOf[CreatePerson].getName
+  final val Manifest = classOf[ChangeLastName].getName
 
   override def manifest(o: AnyRef): String = o.getClass.getName
 
@@ -38,15 +38,15 @@ class CreatePersonSerializer extends SerializerWithStringManifest {
    */
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
     if (Manifest == manifest) {
-      val PBCreatePerson(firstName, lastName, timestamp) = PBCreatePerson.parseFrom(bytes)
-      CreatePerson(firstName, lastName, timestamp)
+      val PBChangeLastName(lastName, timestamp) = PBChangeLastName.parseFrom(bytes)
+      ChangeLastName(lastName, timestamp)
     } else throw new IllegalArgumentException("Unable to handle manifest: " + manifest)
 
   /**
    * Marshal the data model to bytes
    */
   override def toBinary(o: AnyRef): Array[Byte] = o match {
-    case CreatePerson(firstName, lastName, timestamp) ⇒ PBCreatePerson(firstName, lastName, timestamp).toByteArray
-    case _                                            ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
+    case ChangeLastName(lastName, timestamp) ⇒ PBChangeLastName(lastName, timestamp).toByteArray
+    case _                                   ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
   }
 }

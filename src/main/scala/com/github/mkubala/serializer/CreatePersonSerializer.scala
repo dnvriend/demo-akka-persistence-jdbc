@@ -15,21 +15,21 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.serializer
+package com.github.mkubala.serializer
 
 import akka.serialization.SerializerWithStringManifest
-import com.github.dnvriend.Person.ChangeFirstName
-import com.github.dnvriend.data.Command.PBChangeFirstName
+import com.github.mkubala.Person.CreatePerson
+import com.github.mkubala.data.Command.PBCreatePerson
 
 /**
  * Converts FirstName Google Protobuf Message
  * to byte array and back
  */
-class ChangeFirstNameSerializer extends SerializerWithStringManifest {
+class CreatePersonSerializer extends SerializerWithStringManifest {
 
-  override def identifier: Int = 100
+  override def identifier: Int = 102
 
-  final val Manifest = classOf[ChangeFirstName].getName
+  final val Manifest = classOf[CreatePerson].getName
 
   override def manifest(o: AnyRef): String = o.getClass.getName
 
@@ -38,15 +38,15 @@ class ChangeFirstNameSerializer extends SerializerWithStringManifest {
    */
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
     if (Manifest == manifest) {
-      val PBChangeFirstName(firstName, timestamp) = PBChangeFirstName.parseFrom(bytes)
-      ChangeFirstName(firstName, timestamp)
+      val PBCreatePerson(firstName, lastName, timestamp) = PBCreatePerson.parseFrom(bytes)
+      CreatePerson(firstName, lastName, timestamp)
     } else throw new IllegalArgumentException("Unable to handle manifest: " + manifest)
 
   /**
    * Marshal the data model to bytes
    */
   override def toBinary(o: AnyRef): Array[Byte] = o match {
-    case ChangeFirstName(firstName, timestamp) ⇒ PBChangeFirstName(firstName, timestamp).toByteArray
-    case _                                     ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
+    case CreatePerson(firstName, lastName, timestamp) ⇒ PBCreatePerson(firstName, lastName, timestamp).toByteArray
+    case _                                            ⇒ throw new IllegalStateException("Cannot serialize: " + o.getClass.getName)
   }
 }

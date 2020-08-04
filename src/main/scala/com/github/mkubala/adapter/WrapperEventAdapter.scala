@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.dnvriend.adapter
+package com.github.mkubala.adapter
 
 import akka.persistence.journal.{ EventSeq, ReadEventAdapter }
 import pprint._
