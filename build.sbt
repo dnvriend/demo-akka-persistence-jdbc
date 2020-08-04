@@ -15,7 +15,9 @@
  */
 name := "demo-akka-persistence-postgres"
 
-organization := "pl.mkubala"
+organization := "com.github.mkubala"
+
+organizationName := "Marcin Kubala"
 
 version := "1.0.0"
 
@@ -35,9 +37,9 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-persistence-query" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
-    "com.lihaoyi" %% "pprint" % "0.5.6",
-    "com.twitter" %% "chill-akka" % "0.9.5",
+    "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
     "com.swissborg" %% "akka-persistence-postgres" % akkaPersistencePostgresVersion changing(),
+    "com.lihaoyi" %% "pprint" % "0.5.6",
     "ch.qos.logback" % "logback-classic" % "1.1.7",
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion
   )
@@ -54,21 +56,18 @@ licenses +=("Apache-2.0", url("http://opensource.org/licenses/apache2.0.php"))
 // enable scala code formatting //
 import scalariform.formatter.preferences._
 import com.typesafe.sbt.SbtScalariform
-import de.heikoseeberger.sbtheader.LicenseStyle
 
 // Scalariform settings
 SbtScalariform.autoImport.scalariformPreferences := SbtScalariform.autoImport.scalariformPreferences.value
   .setPreference(AlignSingleLineCaseStatements, true)
   .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100)
-  .setPreference(DoubleIndentClassDeclaration, true)
+  .setPreference(DoubleIndentConstructorArguments, true)
   .setPreference(RewriteArrowSymbols, true)
 
 // enable updating file headers //
-headerLicense := Some(HeaderLicense.ALv2("2016", "Dennis Vriend", HeaderLicenseStyle.Detailed))
+headerLicense := Some(HeaderLicenseSettings.license)
 
-headerMappings := headerMappings.value +
-  (HeaderFileType.scala -> HeaderCommentStyle.cStyleBlockComment) +
-  (HeaderFileType.conf -> HeaderCommentStyle.hashLineComment)
+headerMappings := headerMappings.value ++ HeaderLicenseSettings.mappings
 
 // enable sbt-revolver
 Revolver.settings ++ Seq(
@@ -81,13 +80,6 @@ Revolver.settings ++ Seq(
 PB.targets in Compile := Seq(
   scalapb.gen() -> (sourceManaged in Compile).value
 )
-
-//PB.protobufSettings
-
-// protoc-jar which is on the sbt classpath //
-// https://github.com/os72/protoc-jar
-//PB.runProtoc in PB.protobufConfig := (args =>
-//  com.github.os72.protocjar.Protoc.runProtoc("-v300" +: args.toArray))
 
 // build info configuration //
 buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)

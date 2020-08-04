@@ -1,4 +1,5 @@
 /*
+ * Copyright 2020 Marcin Kubala
  * Copyright 2016 Dennis Vriend
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +55,7 @@ object WrapperTest extends App {
   }
 
   lazy val configuration = ConfigFactory.load("wrapper-application.conf")
-  implicit val system: ActorSystem = ActorSystem("wrapper", configuration)
+  implicit val system: ActorSystem = ActorSystem("WrapperApp", configuration)
 
   sys.addShutdownHook(system.terminate())
 

@@ -18,7 +18,7 @@ package com.github.dnvriend
 
 import akka.actor.{ ActorSystem, Props }
 import akka.persistence.PersistentActor
-import akka.stream.{ ActorMaterializer, Materializer }
+import akka.stream.{ Materializer, SystemMaterializer }
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.ExecutionContext
@@ -51,8 +51,8 @@ class CounterActor(implicit ec: ExecutionContext) extends PersistentActor {
 
   import scala.concurrent.duration._
 
-  context.system.scheduler.schedule(1.second, 1.second, self, Increment(1))
-  context.system.scheduler.schedule(5.second, 5.second, self, Decrement(1))
+  context.system.scheduler.scheduleWithFixedDelay(1.second, 1.second, self, Increment(1))
+  context.system.scheduler.scheduleWithFixedDelay(5.second, 5.second, self, Decrement(1))
 
   private def handleEvent(event: Event): Unit = {
     state = state.update(event)
@@ -78,17 +78,17 @@ class CounterActor(implicit ec: ExecutionContext) extends PersistentActor {
 object LaunchCounter extends App {
   val configName = "counter-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("demo", configuration)
+  implicit val system: ActorSystem = ActorSystem("CounterApp", configuration)
   sys.addShutdownHook(system.terminate())
   implicit val ec: ExecutionContext = system.dispatcher
-  implicit val mat: Materializer = ActorMaterializer()
+  implicit val mat: Materializer = SystemMaterializer(system).materializer
   val counter = system.actorOf(Props(new CounterActor))
 
   // async event listener
-  //  lazy val readJournal: JdbcReadJournal = PersistenceQuery(system).readJournalFor[JdbcReadJournal](JdbcReadJournal.Identifier)
+  //  lazy val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
   // does not yet work as we have to implements a custom ReadJournalDao :)
-  //  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach {
-  //    case e ⇒ println(": >>== Received event ==<< : " + e)
+  //  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach { e ⇒
+  //    println(": >>== Received event ==<< : " + e)
   //  }
 
   val banner =

@@ -43,9 +43,6 @@ class Persister(val persistenceId: String)(implicit ec: ExecutionContext) extend
 
   def persisted(numPets: Int): Receive = LoggingReceive {
     case pet: Pet ⇒
-      assert(serialization.findSerializerFor(pet).getClass.getName == "com.twitter.chill.akka.AkkaSerializer")
-      // when you look in the database, the length of the message field of the journal should be ~382 bytes
-      // Java serialization should be 3x so ~1k
       persist(pet) { _ ⇒
         println("persisted pet: " + numPets)
         context.become(persisted(numPets + 1))
@@ -73,8 +70,7 @@ class PersisterSupervisor(persisterProps: Props)(implicit ec: ExecutionContext) 
 object LaunchPet extends App {
   val configName = "pet-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("demo", configuration)
-  implicit val mat: Materializer = SystemMaterializer(system).materializer
+  implicit val system: ActorSystem = ActorSystem("PetApp", configuration)
   sys.addShutdownHook(system.terminate())
   implicit val ec: ExecutionContext = system.dispatcher
   val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)

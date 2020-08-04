@@ -18,7 +18,6 @@ package com.github.dnvriend.dao
 
 import com.github.dnvriend.dao.PersonDao.PersonEntity
 import com.github.dnvriend.dao.PersonTables.PersonTableRow
-import slick.driver.JdbcProfile
 import slick.jdbc.JdbcBackend
 
 import scala.concurrent.{ ExecutionContext, Future }

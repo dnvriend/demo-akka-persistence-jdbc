@@ -38,12 +38,55 @@ CREATE TABLE IF NOT EXISTS public.snapshot
     PRIMARY KEY (persistence_id, sequence_number)
 );
 
+-- flat journal schema
+CREATE SCHEMA IF NOT EXISTS flat;
+
+DROP TABLE IF EXISTS flat.journal;
+
+CREATE TABLE IF NOT EXISTS flat.journal
+(
+    ordering        BIGSERIAL,
+    sequence_number BIGINT                NOT NULL,
+    deleted         BOOLEAN DEFAULT FALSE NOT NULL,
+    persistence_id  TEXT                  NOT NULL,
+    message         BYTEA                 NOT NULL,
+    tags            int[],
+    PRIMARY KEY (persistence_id, sequence_number)
+);
+
+CREATE EXTENSION IF NOT EXISTS intarray WITH SCHEMA flat;
+CREATE INDEX journal_tags_idx ON flat.journal USING GIN (tags gin__int_ops);
+CREATE INDEX journal_ordering_idx ON flat.journal USING BRIN (ordering);
+
+DROP TABLE IF EXISTS flat.tags;
+
+CREATE TABLE IF NOT EXISTS flat.tags
+(
+    id              BIGSERIAL,
+    name            TEXT                        NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS tags_name_idx on flat.tags (name);
+
+DROP TABLE IF EXISTS flat.snapshot;
+
+CREATE TABLE IF NOT EXISTS flat.snapshot
+(
+    persistence_id  TEXT   NOT NULL,
+    sequence_number BIGINT NOT NULL,
+    created         BIGINT NOT NULL,
+    snapshot        BYTEA  NOT NULL,
+    PRIMARY KEY (persistence_id, sequence_number)
+);
+
+
 -- akka-persistence-postgres partitioned schema
-CREATE SCHEMA IF NOT EXISTS akka_persistence_postgres;
+CREATE SCHEMA IF NOT EXISTS nested_partitions;
 
-DROP TABLE IF EXISTS akka_persistence_postgres.journal;
+DROP TABLE IF EXISTS nested_partitions.journal;
 
-CREATE TABLE IF NOT EXISTS akka_persistence_postgres.journal
+CREATE TABLE IF NOT EXISTS nested_partitions.journal
 (
     ordering        BIGSERIAL,
     sequence_number BIGINT                NOT NULL,
@@ -54,24 +97,24 @@ CREATE TABLE IF NOT EXISTS akka_persistence_postgres.journal
     PRIMARY KEY (persistence_id, sequence_number)
 ) PARTITION BY LIST (persistence_id);
 
-CREATE EXTENSION IF NOT EXISTS intarray WITH SCHEMA akka_persistence_postgres;
-CREATE INDEX journal_tags_idx ON akka_persistence_postgres.journal USING GIN (tags gin__int_ops);
-CREATE INDEX journal_ordering_idx ON akka_persistence_postgres.journal USING BRIN (ordering);
+CREATE EXTENSION IF NOT EXISTS intarray WITH SCHEMA nested_partitions;
+CREATE INDEX journal_tags_idx ON nested_partitions.journal USING GIN (tags gin__int_ops);
+CREATE INDEX journal_ordering_idx ON nested_partitions.journal USING BRIN (ordering);
 
-DROP TABLE IF EXISTS akka_persistence_postgres.tags;
+DROP TABLE IF EXISTS nested_partitions.tags;
 
-CREATE TABLE IF NOT EXISTS akka_persistence_postgres.tags
+CREATE TABLE IF NOT EXISTS nested_partitions.tags
 (
     id   BIGSERIAL,
     name TEXT NOT NULL,
     PRIMARY KEY (id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS tags_name_idx on akka_persistence_postgres.tags (name);
+CREATE UNIQUE INDEX IF NOT EXISTS tags_name_idx on nested_partitions.tags (name);
 
-DROP TABLE IF EXISTS akka_persistence_postgres.snapshot;
+DROP TABLE IF EXISTS nested_partitions.snapshot;
 
-CREATE TABLE IF NOT EXISTS akka_persistence_postgres.snapshot
+CREATE TABLE IF NOT EXISTS nested_partitions.snapshot
 (
     persistence_id  TEXT   NOT NULL,
     sequence_number BIGINT NOT NULL,
