@@ -1,4 +1,5 @@
 /*
+ * Copyright 2020 Marcin Kubala
  * Copyright 2016 Dennis Vriend
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
