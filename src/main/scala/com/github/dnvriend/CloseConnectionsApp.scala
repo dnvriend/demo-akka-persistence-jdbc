@@ -18,23 +18,21 @@ package com.github.dnvriend
 
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.event.LoggingReceive
-import akka.persistence.PersistentActor
-import com.typesafe.config.ConfigFactory
 import akka.pattern.ask
+import akka.persistence.PersistentActor
 import akka.persistence.postgres.query.scaladsl.PostgresReadJournal
 import akka.persistence.query.PersistenceQuery
-import akka.stream.{ ActorMaterializer, Materializer }
 import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 
-import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
+import scala.concurrent.{ Await, ExecutionContext, Future }
 
 object CloseConnectionsApp extends App {
-  implicit val timeout = Timeout(1.second)
-  val configName = "default-application.conf"
+  implicit val timeout: Timeout = Timeout(1.second)
+  val configName = "close-connection-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
-  implicit val system = ActorSystem("app", configuration)
-  implicit val mat: Materializer = ActorMaterializer()
+  implicit val system: ActorSystem = ActorSystem("CloseConnApp", configuration)
   implicit val ec: ExecutionContext = system.dispatcher
   val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
   sys.addShutdownHook(system.terminate())

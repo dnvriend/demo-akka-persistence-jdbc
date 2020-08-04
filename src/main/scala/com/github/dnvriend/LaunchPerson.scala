@@ -19,7 +19,6 @@ package com.github.dnvriend
 import java.text.SimpleDateFormat
 import java.util.{ Date, UUID }
 
-import akka.NotUsed
 import akka.actor._
 import akka.cluster.sharding.{ ClusterSharding, ClusterShardingSettings, ShardRegion }
 import akka.event.LoggingReceive
@@ -27,8 +26,8 @@ import akka.persistence.postgres.query.scaladsl.PostgresReadJournal
 import akka.persistence.query.scaladsl._
 import akka.persistence.query.{ EventEnvelope, Offset, PersistenceQuery }
 import akka.persistence.{ PersistentActor, RecoveryCompleted }
+import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
-import akka.stream.{ ActorMaterializer, Materializer }
 import com.github.dnvriend.dao.{ PersonDao, PersonDaoImpl }
 import com.github.dnvriend.data.Event.PBPersonCreated
 import com.typesafe.config.ConfigFactory
@@ -48,8 +47,11 @@ object Person {
 
   // events
   sealed trait Event
+
   final case class PersonCreated(firstName: String, lastName: String, timestamp: Long) extends Event
+
   final case class FirstNameChanged(firstName: String, timestamp: Long) extends Event
+
   final case class LastNameChanged(lastName: String, timestamp: Long) extends Event
 
   // the state
@@ -61,7 +63,7 @@ object Person {
   final val NumberOfShards: Int = 100
 
   val extractEntityId: ShardRegion.ExtractEntityId = {
-    case EntityEnvelope(id, payload) ⇒ (id.toString, payload)
+    case EntityEnvelope(id, payload) ⇒ (id, payload)
   }
 
   val extractShardId: ShardRegion.ExtractShardId = {
@@ -72,6 +74,7 @@ object Person {
 }
 
 class Person extends PersistentActor with ActorLogging {
+
   import Person._
   import ShardRegion.Passivate
 
@@ -79,7 +82,7 @@ class Person extends PersistentActor with ActorLogging {
 
   context.setReceiveTimeout(300.millis)
 
-  var state = PersonState()
+  private var state = PersonState()
 
   def handleEvent(event: Event): Unit = event match {
     case PersonCreated(firstName, lastName, _) ⇒ state = state.copy(firstName = firstName, lastName = lastName)
@@ -103,25 +106,30 @@ class Person extends PersistentActor with ActorLogging {
 }
 
 object SupportDesk {
+
   final case class ChangeFirstName(id: String)
+
   final case class ChangeLastName(id: String)
+
 }
 
 class SupportDesk(personRegion: ActorRef, readJournal: ReadJournal with CurrentPersistenceIdsQuery)(implicit val mat: Materializer, ec: ExecutionContext) extends Actor with ActorLogging {
-  import Person._
-  private var counter: Int = 0
 
-  context.system.scheduler.schedule(1.second, 1.second, self, "GO")
+  import Person._
+
+  context.system.scheduler.scheduleWithFixedDelay(1.second, 1.second, self, "GO")
 
   def now: Long = System.currentTimeMillis()
 
-  override def receive: Receive = {
+  override val receive: Receive = receive()
+
+  def receive(counter: Int = 0): Receive = {
     case _ if counter % 2 == 0 ⇒
       val id = UUID.randomUUID.toString
       personRegion ! EntityEnvelope(id, CreatePerson("FOO", "BAR", now))
       context.system.scheduler.scheduleOnce(5.seconds, self, SupportDesk.ChangeFirstName(id))
       context.system.scheduler.scheduleOnce(10.seconds, self, SupportDesk.ChangeLastName(id))
-      counter += 1
+      context.become(receive(counter + 1))
 
     case SupportDesk.ChangeFirstName(id) ⇒
       personRegion ! EntityEnvelope(id, ChangeFirstName(s"FOO-${DateUtil.format(now)}", now))
@@ -130,32 +138,44 @@ class SupportDesk(personRegion: ActorRef, readJournal: ReadJournal with CurrentP
       personRegion ! EntityEnvelope(id, ChangeLastName(s"BAR-${DateUtil.format(now)}", now))
 
     case _ ⇒
-      counter += 1
-      println("Nothing to do: " + counter)
+      context.become(receive(counter + 1))
+      readJournal.currentPersistenceIds().runWith(Sink.seq).foreach { seq ⇒
+        println(s"We have ${seq.length} registered persons")
+      }
   }
 }
 
 object DateUtil {
-  def format(timestamp: Long): String =
-    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.XXX").format(new Date(timestamp))
+  private val dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.XXX")
+
+  def format(timestamp: Long): String = dateFormat.format(new Date(timestamp))
 }
 
 object InsertPersonInPersonTableHandler {
+
   sealed trait Event
+
   final case class PersonHandled(offset: Offset) extends Event
+
   final case class PersonInserted(id: String) extends Event
+
   final case class Completed()
+
   final case class Ack()
+
   final case class Init()
 
   final case class SavePersonSucceeded(offset: Offset, sender: ActorRef)
+
 }
 
 /**
  * Handles only PersonCreated events to insert a record in the person.persons table (read model)
  */
 class InsertPersonInPersonTableHandler(readJournal: PostgresReadJournal, personDao: PersonDao)(implicit ec: ExecutionContext, mat: Materializer) extends PersistentActor {
+
   import InsertPersonInPersonTableHandler._
+
   override def persistenceId: String = "InsertPersonInPersonTableHandler"
 
   var recoverOffsetPersonCreated: Offset = Offset.sequence(0L)
@@ -169,7 +189,7 @@ class InsertPersonInPersonTableHandler(readJournal: PostgresReadJournal, personD
     case event: Event ⇒ handleEvent(event)
     case RecoveryCompleted ⇒
       readJournal.eventsByTag("person-created", recoverOffsetPersonCreated)
-        .runWith(Sink.actorRefWithAck(self, Init(), Ack(), Completed()))
+        .runWith(Sink.actorRefWithBackpressure(self, Init(), Ack(), Completed(), Status.Failure))
   }
 
   override def receiveCommand: Receive = LoggingReceive {
@@ -177,7 +197,7 @@ class InsertPersonInPersonTableHandler(readJournal: PostgresReadJournal, personD
 
     case _: Init      ⇒ sender() ! Ack() // provide demand
 
-    case EventEnvelope(offset, pid, seqno, PBPersonCreated(firstName, lastName, timestamp)) ⇒
+    case EventEnvelope(offset, pid, _, PBPersonCreated(firstName, lastName, _)) ⇒
       // side effect only in command handler
       val theSender = sender()
       personDao.savePerson(pid, firstName, lastName).map { _ ⇒
@@ -192,9 +212,13 @@ class InsertPersonInPersonTableHandler(readJournal: PostgresReadJournal, personD
 }
 
 object UpdatePersonFirstNameHandler {
+
   sealed trait Event
+
   final case class PersonHandled(offset: Long) extends Event
+
   final case class PersonAggregated(pid: String, firstname: String) extends Event
+
 }
 
 /**
@@ -206,8 +230,6 @@ class UpdatePersonFirstNameAggregator extends PersistentActor {
 
   var recoverOffsetPersonCreated: Long = 0
   var recoverOffsetFirstNameChanged: Long = 0
-
-  var query: NotUsed = null
 
   override def receiveRecover: Receive = {
     case RecoveryCompleted ⇒
@@ -221,10 +243,9 @@ class UpdatePersonFirstNameAggregator extends PersistentActor {
 object LaunchPerson extends App {
   val configName = "person-application.conf"
   lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("ClusterSystem", configuration)
+  implicit val system: ActorSystem = ActorSystem("PersonAppCluster", configuration)
   sys.addShutdownHook(system.terminate())
   implicit val ec: ExecutionContext = system.dispatcher
-  implicit val mat: Materializer = ActorMaterializer()
   lazy val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
 
   // launch the personShardRegion; the returned actor must be used to send messages to the shard
@@ -243,17 +264,18 @@ object LaunchPerson extends App {
 
   val insertPersonInPersonTableHandler = system.actorOf(Props(new InsertPersonInPersonTableHandler(readJournal, personDao)))
 
-  val banner = s"""
-    |
-    |#####  ###### #    #  ####
-    |#    # #      ##  ## #    #
-    |#    # #####  # ## # #    #
-    |#    # #      #    # #    #
-    |#    # #      #    # #    #
-    |#####  ###### #    #  ####
-    |
-    |$BuildInfo
-    |
+  val banner =
+    s"""
+       |
+       |#####  ###### #    #  ####
+       |#    # #      ##  ## #    #
+       |#    # #####  # ## # #    #
+       |#    # #      #    # #    #
+       |#    # #      #    # #    #
+       |#####  ###### #    #  ####
+       |
+       |$BuildInfo
+       |
   """.stripMargin
 
   println(banner)
