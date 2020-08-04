@@ -21,7 +21,7 @@ import com.github.dnvriend.dao.PersonDao.PersonEntity
 import com.github.dnvriend.dao.PersonTables.PersonTableRow
 import slick.jdbc.JdbcBackend
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 object PersonDao {
   final case class PersonEntity(id: String, firstname: String, lastname: String, updated: Long)

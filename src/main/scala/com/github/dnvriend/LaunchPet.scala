@@ -17,7 +17,7 @@
 
 package com.github.dnvriend
 
-import akka.actor.{Actor, ActorSystem, Props, Terminated}
+import akka.actor.{ Actor, ActorSystem, Props, Terminated }
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
 import akka.persistence.postgres.query.scaladsl.PostgresReadJournal
