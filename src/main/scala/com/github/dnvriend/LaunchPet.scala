@@ -1,4 +1,5 @@
 /*
+ * Copyright 2020 Marcin Kubala
  * Copyright 2016 Dennis Vriend
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,13 +17,11 @@
 
 package com.github.dnvriend
 
-import akka.actor.{ Actor, ActorSystem, Props, Terminated }
+import akka.actor.{Actor, ActorSystem, Props, Terminated}
 import akka.event.LoggingReceive
 import akka.persistence.PersistentActor
 import akka.persistence.postgres.query.scaladsl.PostgresReadJournal
 import akka.persistence.query.PersistenceQuery
-import akka.serialization.SerializationExtension
-import akka.stream.{ ActorMaterializer, Materializer, SystemMaterializer }
 import com.github.dnvriend.domain.PetDomain._
 import com.typesafe.config.ConfigFactory
 
@@ -30,7 +29,6 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class Persister(val persistenceId: String)(implicit ec: ExecutionContext) extends PersistentActor {
-  val serialization = SerializationExtension(context.system)
 
   def schedulePersistPet(): Unit =
     context.system.scheduler.scheduleOnce(1.second, self, Pet())
@@ -54,8 +52,8 @@ class Persister(val persistenceId: String)(implicit ec: ExecutionContext) extend
 }
 
 class PersisterSupervisor(persisterProps: Props)(implicit ec: ExecutionContext) extends Actor {
-  val createPersister = (props: Props) ⇒ context.actorOf(props)
-  val createAndWatchPersister = (props: Props) ⇒ context watch createPersister(props)
+  private val createPersister = (props: Props) ⇒ context.actorOf(props)
+  private val createAndWatchPersister = (props: Props) ⇒ context watch createPersister(props)
 
   override def preStart(): Unit = {
     createAndWatchPersister(persisterProps)
@@ -63,7 +61,7 @@ class PersisterSupervisor(persisterProps: Props)(implicit ec: ExecutionContext) 
   }
 
   override def receive: Receive = LoggingReceive {
-    case Terminated(ref) ⇒ createAndWatchPersister(persisterProps)
+    case Terminated(_) ⇒ createAndWatchPersister(persisterProps)
   }
 }
 
@@ -77,8 +75,8 @@ object LaunchPet extends App {
   final val PersistenceId = "persister"
 
   // async queries :)
-  readJournal.eventsByPersistenceId(PersistenceId, 0, Long.MaxValue).runForeach {
-    case e ⇒ println(": >>== Received event ==<< : " + e)
+  readJournal.eventsByPersistenceId(PersistenceId, 0, Long.MaxValue).runForeach { e ⇒
+    println(": >>== Received event ==<< : " + e)
   }
 
   val persisterProps = Props(new Persister(PersistenceId))

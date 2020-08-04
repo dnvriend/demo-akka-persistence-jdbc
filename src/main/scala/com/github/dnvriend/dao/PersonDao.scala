@@ -1,4 +1,5 @@
 /*
+ * Copyright 2020 Marcin Kubala
  * Copyright 2016 Dennis Vriend
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +21,7 @@ import com.github.dnvriend.dao.PersonDao.PersonEntity
 import com.github.dnvriend.dao.PersonTables.PersonTableRow
 import slick.jdbc.JdbcBackend
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 object PersonDao {
   final case class PersonEntity(id: String, firstname: String, lastname: String, updated: Long)
