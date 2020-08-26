@@ -29,7 +29,7 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies ++= {
   val akkaVersion = "2.6.8"
-  val akkaPersistencePostgresVersion = "0.0.0+856-64fb13a4-SNAPSHOT"
+  val akkaPersistencePostgresVersion = "0.1.0"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
