@@ -29,7 +29,7 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies ++= {
   val akkaVersion = "2.6.8"
-  val akkaPersistencePostgresVersion = "0.1.0"
+  val akkaPersistencePostgresVersion = "0.2.0+9-4c82b78d-SNAPSHOT"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
@@ -40,6 +40,7 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-cluster-sharding" % akkaVersion,
     "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
     "com.swissborg" %% "akka-persistence-postgres" % akkaPersistencePostgresVersion changing(),
+    "com.swissborg" %% "akka-persistence-postgres-migration" % akkaPersistencePostgresVersion changing(),
     "com.lihaoyi" %% "pprint" % "0.5.6",
     "ch.qos.logback" % "logback-classic" % "1.1.7",
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion

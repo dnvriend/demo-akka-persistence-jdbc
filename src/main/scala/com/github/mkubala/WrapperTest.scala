@@ -54,31 +54,33 @@ object WrapperTest extends App {
     }
   }
 
+  def run()(implicit system: ActorSystem): Unit = {
+    implicit val ec: ExecutionContext = system.dispatcher
+    val extension = Persistence(system)
+
+    var p = system.actorOf(Persister.props())
+    val tp = TestProbe()
+
+    tp.send(p, (1 to 3).map("a-" + _).toList)
+    tp.expectMsg(akka.actor.Status.Success("done"))
+
+    (1 to 3).map("b-" + _).foreach { msg ⇒
+      tp.send(p, msg)
+      tp.expectMsg(akka.actor.Status.Success("done"))
+    }
+    tp watch p
+    tp.send(p, PoisonPill)
+    tp.expectTerminated(p)
+
+    p = system.actorOf(Persister.props())
+    tp.send(p, "ping")
+    tp.expectMsg("pong")
+  }
+
   lazy val configuration = ConfigFactory.load("wrapper-application.conf")
   implicit val system: ActorSystem = ActorSystem("WrapperApp", configuration)
 
   sys.addShutdownHook(system.terminate())
-
-  implicit val ec: ExecutionContext = system.dispatcher
-  val extension = Persistence(system)
-
-  var p = system.actorOf(Persister.props())
-  val tp = TestProbe()
-
-  tp.send(p, (1 to 3).map("a-" + _).toList)
-  tp.expectMsg(akka.actor.Status.Success("done"))
-
-  (1 to 3).map("b-" + _).foreach { msg ⇒
-    tp.send(p, msg)
-    tp.expectMsg(akka.actor.Status.Success("done"))
-  }
-  tp watch p
-  tp.send(p, PoisonPill)
-  tp.expectTerminated(p)
-
-  p = system.actorOf(Persister.props())
-  tp.send(p, "ping")
-  tp.expectMsg("pong")
-
+  run()
   Await.ready(system.terminate(), 10.seconds)
 }
