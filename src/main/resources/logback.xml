@@ -29,6 +29,7 @@
     <!--<logger name="akka.persistence.postgres" level="debug"/>-->
     <!--<logger name="akka.actor" level="debug"/>-->
     <!--<logger name="slick.backend.DatabaseComponent.action" level="debug" />-->
+		<!--<logger name="slick" level="debug" />-->
 
     <root level="info">
         <appender-ref ref="console"/>

@@ -27,7 +27,7 @@ import pprint._
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, ExecutionContext }
 
-object WrapperTest extends App {
+object WrapperTest {
 
   class Persister(val persistenceId: String) extends PersistentActor {
 
@@ -80,7 +80,9 @@ object WrapperTest extends App {
   lazy val configuration = ConfigFactory.load("wrapper-application.conf")
   implicit val system: ActorSystem = ActorSystem("WrapperApp", configuration)
 
-  sys.addShutdownHook(system.terminate())
-  run()
-  Await.ready(system.terminate(), 10.seconds)
+  def main(args: Array[String]): Unit = {
+    sys.addShutdownHook(system.terminate())
+    run()
+    Await.ready(system.terminate(), 10.seconds)
+  }
 }

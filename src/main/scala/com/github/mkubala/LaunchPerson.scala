@@ -241,43 +241,47 @@ class UpdatePersonFirstNameAggregator extends PersistentActor {
   }
 }
 
-object LaunchPerson extends App {
-  val configName = "person-application.conf"
-  lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("PersonAppCluster", configuration)
-  sys.addShutdownHook(system.terminate())
-  implicit val ec: ExecutionContext = system.dispatcher
-  lazy val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
+object LaunchPerson {
 
-  // launch the personShardRegion; the returned actor must be used to send messages to the shard
-  val personRegion: ActorRef = ClusterSharding(system).start(
-    typeName = Person.PersonShardName,
-    entityProps = Props[Person],
-    settings = ClusterShardingSettings(system),
-    extractEntityId = Person.extractEntityId,
-    extractShardId = Person.extractShardId)
+  def main(args: Array[String]): Unit = {
+    val configName = "person-application.conf"
+    lazy val configuration = ConfigFactory.load(configName)
+    implicit val system: ActorSystem = ActorSystem("PersonAppCluster", configuration)
+    sys.addShutdownHook(system.terminate())
+    implicit val ec: ExecutionContext = system.dispatcher
+    lazy val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
 
-  val supportDesk = system.actorOf(Props(new SupportDesk(personRegion, readJournal)))
+    // launch the personShardRegion; the returned actor must be used to send messages to the shard
+    val personRegion: ActorRef = ClusterSharding(system).start(
+      typeName = Person.PersonShardName,
+      entityProps = Props[Person],
+      settings = ClusterShardingSettings(system),
+      extractEntityId = Person.extractEntityId,
+      extractShardId = Person.extractShardId)
 
-  val personReadModelDatabase = slick.jdbc.JdbcBackend.Database.forConfig("person-read-model", system.settings.config)
+    val supportDesk = system.actorOf(Props(new SupportDesk(personRegion, readJournal)))
 
-  val personDao = new PersonDaoImpl(personReadModelDatabase)
+    val personReadModelDatabase = slick.jdbc.JdbcBackend.Database.forConfig("person-read-model", system.settings.config)
 
-  val insertPersonInPersonTableHandler = system.actorOf(Props(new InsertPersonInPersonTableHandler(readJournal, personDao)))
+    val personDao = new PersonDaoImpl(personReadModelDatabase)
 
-  val banner =
-    s"""
-       |
-       |#####  ###### #    #  ####
-       |#    # #      ##  ## #    #
-       |#    # #####  # ## # #    #
-       |#    # #      #    # #    #
-       |#    # #      #    # #    #
-       |#####  ###### #    #  ####
-       |
-       |$BuildInfo
-       |
+    val insertPersonInPersonTableHandler = system.actorOf(Props(new InsertPersonInPersonTableHandler(readJournal, personDao)))
+
+    val banner =
+      s"""
+         |
+         |#####  ###### #    #  ####
+         |#    # #      ##  ## #    #
+         |#    # #####  # ## # #    #
+         |#    # #      #    # #    #
+         |#    # #      #    # #    #
+         |#####  ###### #    #  ####
+         |
+         |$BuildInfo
+         |
   """.stripMargin
 
-  println(banner)
+    println(
+      banner)
+  }
 }

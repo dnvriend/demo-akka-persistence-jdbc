@@ -65,20 +65,24 @@ class PersisterSupervisor(persisterProps: Props)(implicit ec: ExecutionContext) 
   }
 }
 
-object LaunchPet extends App {
-  val configName = "pet-application.conf"
-  lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("PetApp", configuration)
-  sys.addShutdownHook(system.terminate())
-  implicit val ec: ExecutionContext = system.dispatcher
-  val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
-  final val PersistenceId = "persister"
+object LaunchPet {
 
-  // async queries :)
-  readJournal.eventsByPersistenceId(PersistenceId, 0, Long.MaxValue).runForeach { e ⇒
-    println(": >>== Received event ==<< : " + e)
+  val PersistenceId = "persister"
+
+  def main(args: Array[String]): Unit = {
+    val configName = "pet-application.conf"
+    lazy val configuration = ConfigFactory.load(configName)
+    implicit val system: ActorSystem = ActorSystem("PetApp", configuration)
+    sys.addShutdownHook(system.terminate())
+    implicit val ec: ExecutionContext = system.dispatcher
+    val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
+
+    // async queries :)
+    readJournal.eventsByPersistenceId(PersistenceId, 0, Long.MaxValue).runForeach { e ⇒
+      println(": >>== Received event ==<< : " + e)
+    }
+
+    val persisterProps = Props(new Persister(PersistenceId))
+    val supervisor = system.actorOf(Props(new PersisterSupervisor(persisterProps)))
   }
-
-  val persisterProps = Props(new Persister(PersistenceId))
-  val supervisor = system.actorOf(Props(new PersisterSupervisor(persisterProps)))
 }

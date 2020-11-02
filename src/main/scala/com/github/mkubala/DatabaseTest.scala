@@ -37,44 +37,46 @@ trait DbCleanup {
   def truncateJournal: DBIOAction[Unit, NoStream, Effect] = sqlu"truncate table journal".map(_ ⇒ ())
 }
 
-object DatabaseTest extends App with DbCleanup {
+object DatabaseTest extends DbCleanup {
 
   import akka.persistence.postgres.db.ExtendedPostgresProfile.api._
 
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
-
   val db: Database = Database.forURL(url = "jdbc:postgresql://localhost:5432/docker", user = "docker", password = "docker", driver = "org.postgresql.Driver")
 
-  implicit val getByteArray: GetResult[Array[Byte]] = mkGetResult[Array[Byte]](_.nextBytes())
-  implicit val setByteArray: SetParameter[Array[Byte]] = PlainSQLUtils.mkSetParameter[Array[Byte]]("bytea", Base64.getEncoder.encodeToString)
+  def main(args: Array[String]): Unit = {
 
-  type JournalRow = (String, Long, Long, Seq[Int], Array[Byte])
-  implicit val getRowResult: GetResult[JournalRow] = mkGetResult[JournalRow](r ⇒ (r.<<, r.<<, r.<<, r.<<, r.<<[Array[Byte]]))
+    implicit val getByteArray: GetResult[Array[Byte]] = mkGetResult[Array[Byte]](_.nextBytes())
+    implicit val setByteArray: SetParameter[Array[Byte]] = PlainSQLUtils.mkSetParameter[Array[Byte]]("bytea", Base64.getEncoder.encodeToString)
 
-  // insert some records
-  val insertEvents = DBIO.sequence(List(
-    ("pid1", 1, Seq(1, 2, 3, 4), "Dog"),
-    ("pid1", 2, Seq(1, 2, 3, 4), "Cat"),
-    ("pid1", 3, Seq(1, 2, 3, 4), "Fish")).map {
-      case (pid, seqno, tags, message) ⇒
-        sqlu"INSERT INTO journal (persistence_id, sequence_number, tags, message) VALUES ($pid, $seqno, $tags, ${message.getBytes("UTF-8")})"
-    }).transactionally
+    type JournalRow = (String, Long, Long, Seq[Int], Array[Byte])
+    implicit val getRowResult: GetResult[JournalRow] = mkGetResult[JournalRow](r ⇒ (r.<<, r.<<, r.<<, r.<<, r.<<[Array[Byte]]))
 
-  val queryEvents = sql"SELECT persistence_id, sequence_number, ordering, tags, message FROM journal".as[JournalRow]
+    // insert some records
+    val insertEvents = DBIO.sequence(List(
+      ("pid1", 1, Seq(1, 2, 3, 4), "Dog"),
+      ("pid1", 2, Seq(1, 2, 3, 4), "Cat"),
+      ("pid1", 3, Seq(1, 2, 3, 4), "Fish")).map {
+        case (pid, seqno, tags, message) ⇒
+          sqlu"INSERT INTO journal (persistence_id, sequence_number, tags, message) VALUES ($pid, $seqno, $tags, ${message.getBytes("UTF-8")})"
+      }).transactionally
 
-  val dbActions = for {
-    _ ← truncateJournal
-    _ ← insertEvents
-    r ← queryEvents
-  } yield r.map {
-    case (pid, seq, ord, tags, msg) ⇒
-      val decodedMsg = new String(Base64.getDecoder.decode(msg), "UTF-8")
-      (pid, seq, ord, tags.mkString("(", ", ", ")"), decodedMsg)
-  }.toList
+    val queryEvents = sql"SELECT persistence_id, sequence_number, ordering, tags, message FROM journal".as[JournalRow]
 
-  val rows = db.run(dbActions)
+    val dbActions = for {
+      _ ← truncateJournal
+      _ ← insertEvents
+      r ← queryEvents
+    } yield r.map {
+      case (pid, seq, ord, tags, msg) ⇒
+        val decodedMsg = new String(Base64.getDecoder.decode(msg), "UTF-8")
+        (pid, seq, ord, tags.mkString("(", ", ", ")"), decodedMsg)
+    }.toList
 
-  println(formatTable(Await.result(rows, 1.second)))
+    val rows = db.run(dbActions)
+
+    println(formatTable(Await.result(rows, 1.second)))
+  }
 
   // An utility method to prettify the results
   private def formatTable(dbRows: List[(String, Long, Long, String, String)]): String = {

@@ -24,12 +24,14 @@ version := "1.0.0"
 
 scalaVersion := "2.12.12"
 
-// the akka-persistence-postgres plugin snapshots live here
+// akka-persistence-postgres plugin snapshots live here
 resolvers += Resolver.sonatypeRepo("snapshots")
 
+fork in run := true
+
 libraryDependencies ++= {
-  val akkaVersion = "2.6.8"
-  val akkaPersistencePostgresVersion = "0.2.0+9-4c82b78d-SNAPSHOT"
+  val akkaVersion = "2.6.10"
+  val akkaPersistencePostgresVersion = "0.3.5+11-4ee2163e-SNAPSHOT"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
@@ -43,7 +45,8 @@ libraryDependencies ++= {
     "com.swissborg" %% "akka-persistence-postgres-migration" % akkaPersistencePostgresVersion changing(),
     "com.lihaoyi" %% "pprint" % "0.5.6",
     "ch.qos.logback" % "logback-classic" % "1.1.7",
-    "com.typesafe.akka" %% "akka-testkit" % akkaVersion
+    "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
+    "org.flywaydb" % "flyway-core" % "7.1.1"
   )
 }
 

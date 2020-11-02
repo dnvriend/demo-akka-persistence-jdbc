@@ -25,12 +25,17 @@ import com.typesafe.config.ConfigFactory
 import scala.concurrent.ExecutionContext
 
 object CounterActor {
+
   sealed trait Command
+
   final case class Increment(value: Int) extends Command
+
   final case class Decrement(value: Int) extends Command
 
   sealed trait Event
+
   final case class Incremented(value: Int) extends Event
+
   final case class Decremented(value: Int) extends Event
 
   case class CounterState(value: Int = 0) {
@@ -44,6 +49,7 @@ object CounterActor {
 }
 
 class CounterActor(implicit ec: ExecutionContext) extends PersistentActor {
+
   import CounterActor._
 
   val persistenceId: String = PersistenceId
@@ -76,36 +82,38 @@ class CounterActor(implicit ec: ExecutionContext) extends PersistentActor {
   }
 }
 
-object LaunchCounter extends App {
-  val configName = "counter-application.conf"
-  lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("CounterApp", configuration)
-  sys.addShutdownHook(system.terminate())
-  implicit val ec: ExecutionContext = system.dispatcher
-  implicit val mat: Materializer = SystemMaterializer(system).materializer
-  val counter = system.actorOf(Props(new CounterActor))
+object LaunchCounter {
+  def main(args: Array[String]): Unit = {
+    val configName = "counter-application.conf"
+    lazy val configuration = ConfigFactory.load(configName)
+    implicit val system: ActorSystem = ActorSystem("CounterApp", configuration)
+    sys.addShutdownHook(system.terminate())
+    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val mat: Materializer = SystemMaterializer(system).materializer
+    val counter = system.actorOf(Props(new CounterActor))
 
-  // async event listener
-  //  lazy val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
-  // does not yet work as we have to implements a custom ReadJournalDao :)
-  //  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach { e ⇒
-  //    println(": >>== Received event ==<< : " + e)
-  //  }
+    // async event listener
+    //  lazy val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
+    // does not yet work as we have to implements a custom ReadJournalDao :)
+    //  readJournal.eventsByPersistenceId(CounterActor.PersistenceId, 0, Long.MaxValue).runForeach { e ⇒
+    //    println(": >>== Received event ==<< : " + e)
+    //  }
 
-  val banner =
-    s"""
-       |Counter
-       |=======
-       |#####  ###### #    #  ####
-       |#    # #      ##  ## #    #
-       |#    # #####  # ## # #    #
-       |#    # #      #    # #    #
-       |#    # #      #    # #    #
-       |#####  ###### #    #  ####
-       |
-                  |$BuildInfo
-       |
+    val banner =
+      s"""
+         |Counter
+         |=======
+         |#####  ###### #    #  ####
+         |#    # #      ##  ## #    #
+         |#    # #####  # ## # #    #
+         |#    # #      #    # #    #
+         |#    # #      #    # #    #
+         |#####  ###### #    #  ####
+         |
+         |$BuildInfo
+         |
   """.stripMargin
 
-  println(banner)
+    println(banner)
+  }
 }

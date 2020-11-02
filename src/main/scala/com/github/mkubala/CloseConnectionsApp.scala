@@ -29,37 +29,39 @@ import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, ExecutionContext, Future }
 
-object CloseConnectionsApp extends App {
-  implicit val timeout: Timeout = Timeout(1.second)
-  val configName = "close-connection-application.conf"
-  lazy val configuration = ConfigFactory.load(configName)
-  implicit val system: ActorSystem = ActorSystem("CloseConnApp", configuration)
-  implicit val ec: ExecutionContext = system.dispatcher
-  val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
-  sys.addShutdownHook(system.terminate())
+object CloseConnectionsApp {
+  def main(args: Array[String]): Unit = {
+    implicit val timeout: Timeout = Timeout(1.second)
+    val configName = "close-connection-application.conf"
+    lazy val configuration = ConfigFactory.load(configName)
+    implicit val system: ActorSystem = ActorSystem("CloseConnApp", configuration)
+    implicit val ec: ExecutionContext = system.dispatcher
+    val readJournal: PostgresReadJournal = PersistenceQuery(system).readJournalFor[PostgresReadJournal](PostgresReadJournal.Identifier)
+    sys.addShutdownHook(system.terminate())
 
-  val actorResult: Future[Any] = system.actorOf(Props(new PersistentActor {
-    override def persistenceId: String = "the-guy"
+    val actorResult: Future[Any] = system.actorOf(Props(new PersistentActor {
+      override def persistenceId: String = "the-guy"
 
-    override def receiveRecover: Receive = {
-      case x ⇒ println("recover  : " + x + ", seqNr: " + lastSequenceNr)
-    }
+      override def receiveRecover: Receive = {
+        case x ⇒ println("recover  : " + x + ", seqNr: " + lastSequenceNr)
+      }
 
-    def handle(to: ActorRef, it: String): Unit = {
-      println("persisted: " + it + ", seqNr: " + lastSequenceNr)
-      to ! "hello"
-    }
+      def handle(to: ActorRef, it: String): Unit = {
+        println("persisted: " + it + ", seqNr: " + lastSequenceNr)
+        to ! "hello"
+      }
 
-    override def receiveCommand: Receive = LoggingReceive {
-      case c: String        ⇒ persist(c)(handle(sender(), _))
-      case xs: List[String] ⇒ persistAll(xs)(handle(sender(), _))
-    }
-  })) ? List.fill(25)("hello world")
+      override def receiveCommand: Receive = LoggingReceive {
+        case c: String        ⇒ persist(c)(handle(sender(), _))
+        case xs: List[String] ⇒ persistAll(xs)(handle(sender(), _))
+      }
+    })) ? List.fill(25)("hello world")
 
-  Await.ready(for {
-    _ ← actorResult
-    _ ← readJournal.persistenceIds().take(1).runForeach(pid ⇒ println(s": >>== Received PersistenceId: $pid ==<< :"))
-    _ ← readJournal.eventsByPersistenceId("the-guy", 0, Long.MaxValue).take(25).runForeach(envelope ⇒ println(s": >>== Received envelope: $envelope ==<< :"))
-  } yield (), 5.seconds)
-  Await.ready(system.terminate(), 5.seconds)
+    Await.ready(for {
+      _ ← actorResult
+      _ ← readJournal.persistenceIds().take(1).runForeach(pid ⇒ println(s": >>== Received PersistenceId: $pid ==<< :"))
+      _ ← readJournal.eventsByPersistenceId("the-guy", 0, Long.MaxValue).take(25).runForeach(envelope ⇒ println(s": >>== Received envelope: $envelope ==<< :"))
+    } yield (), 5.seconds)
+    Await.ready(system.terminate(), 5.seconds)
+  }
 }

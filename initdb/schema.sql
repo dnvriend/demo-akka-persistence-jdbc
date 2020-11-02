@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS counter.snapshot (
   PRIMARY KEY(persistence_id, sequence_number)
 );
 
--- Migration - old schema
+-- Migration - Akka Persistence JDBC schema
 CREATE SCHEMA IF NOT EXISTS migration;
 
 DROP TABLE IF EXISTS migration.journal;
@@ -209,28 +209,15 @@ DROP TABLE IF EXISTS migration.journal;
 CREATE TABLE IF NOT EXISTS migration.journal
 (
     ordering        BIGSERIAL,
-    sequence_number BIGINT                NOT NULL,
-    deleted         BOOLEAN DEFAULT FALSE NOT NULL,
-    persistence_id  TEXT                  NOT NULL,
-    message         BYTEA                 NOT NULL,
-    tags            int[],
+    persistence_id  VARCHAR(255)               NOT NULL,
+    sequence_number BIGINT                     NOT NULL,
+    deleted         BOOLEAN      DEFAULT FALSE NOT NULL,
+    tags            VARCHAR(255) DEFAULT NULL,
+    message         BYTEA                      NOT NULL,
     PRIMARY KEY (persistence_id, sequence_number)
 );
 
-CREATE EXTENSION IF NOT EXISTS intarray WITH SCHEMA public;
-CREATE INDEX journal_tags_idx ON migration.journal USING GIN (tags gin__int_ops);
-CREATE INDEX journal_ordering_idx ON migration.journal USING BRIN (ordering);
-
-DROP TABLE IF EXISTS migration.tags;
-
-CREATE TABLE IF NOT EXISTS migration.tags
-(
-    id              BIGSERIAL,
-    name            TEXT                        NOT NULL,
-    PRIMARY KEY (id)
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS tags_name_idx on migration.tags (name);
+CREATE UNIQUE INDEX journal_ordering_idx ON migration.journal (ordering);
 
 DROP TABLE IF EXISTS migration.snapshot;
 
@@ -244,8 +231,18 @@ CREATE TABLE IF NOT EXISTS migration.snapshot
 );
 
 -- Feed the old schema with some old-format events
-INSERT INTO migration.journal(sequence_number, deleted, persistence_id, message, tags) VALUES (1, false, 'foo', '\x0a0708141203612d3110011a03666f6f6a2437653931633861652d623332382d346331642d613138382d64356266316236616337633670acd9c5849d5d', '{}');
-INSERT INTO migration.journal(sequence_number, deleted, persistence_id, message, tags) VALUES (2, false, 'foo', '\x0a0708141203612d3210021a03666f6f6a2437653931633861652d623332382d346331642d613138382d64356266316236616337633670acd9c5849d5d', '{}');
-INSERT INTO migration.journal(sequence_number, deleted, persistence_id, message, tags) VALUES (3, false, 'foo', '\x0a0708141203612d3310031a03666f6f6a2437653931633861652d623332382d346331642d613138382d64356266316236616337633670acd9c5849d5d', '{}');
-INSERT INTO migration.journal(sequence_number, deleted, persistence_id, message, tags) VALUES (4, false, 'foo', '\x0a0708141203622d3110041a03666f6f6a2437653931633861652d623332382d346331642d613138382d6435626631623661633763367096dac5849d5d', '{}');
-INSERT INTO migration.journal(sequence_number, deleted, persistence_id, message, tags) VALUES (5, false, 'foo', '\x0a0708141203622d3210051a03666f6f6a2437653931633861652d623332382d346331642d613138382d64356266316236616337633670a0dac5849d5d', '{}');
+
+insert into migration.journal (
+    persistence_id, sequence_number, deleted, tags, message
+)
+select
+    'foo',
+    i,
+    false,
+    'tag-' || i / 10,
+    '\x0a0708141203612d3110011a03666f6f6a2462313833643434372d333265322d343838322d393634662d6332313561663265386234617092e4d7edaf5d'
+from generate_series(1, 10) s(i);
+
+insert into migration.snapshot (
+    persistence_id, sequence_number, created, snapshot
+) VALUES ('foo', 8, 1604142151007, '\x0400000014000000622d31');
